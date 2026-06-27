@@ -1504,9 +1504,9 @@ function generateProjectsPDF(list, filename, subtitle){
     const byStatus = {};
     list.forEach(p=>{ byStatus[p.status]=(byStatus[p.status]||0)+1; });
 
-    /* painel de resumo — altura dinâmica */
-    const hasAlerts = overloaded.length > 0 || poIndef > 0;
-    const summaryH = hasAlerts ? 160 : 136;
+    /* painel de resumo */
+    const hasAlerts = false;
+    const summaryH = 136;
     ensureSpace(summaryH+16);
 
     /* fundo do painel */
