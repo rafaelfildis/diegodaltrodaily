@@ -1,0 +1,1757 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Saúde Digital - SISD · Gestão</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --navy-900:#0A1B33;
+  --navy-800:#0F2545;
+  --navy-700:#163568;
+  --accent:#0E9C95;
+  --accent-600:#0B7E78;
+  --accent-100:#E3F4F2;
+  --blue-600:#2E6FB0;
+  --blue-100:#E8F0FA;
+  --slate:#5C6B85;
+  --slate-100:#EEF1F6;
+  --gray-50:#F7F9FB;
+  --gray-100:#EEF1F5;
+  --gray-200:#E2E7EE;
+  --gray-300:#CFD7E2;
+  --gray-500:#838FA1;
+  --gray-600:#62708A;
+  --gray-700:#42506A;
+  --ink:#0F1726;
+  --red:#C0392B;
+  --red-100:#FBEAE8;
+  --green:#1F8A57;
+  --green-100:#E5F4EC;
+  --amber:#B5790A;
+  --amber-100:#FDF1DC;
+  --radius-sm:8px;
+  --radius-md:12px;
+  --radius-lg:18px;
+  --shadow-sm:0 1px 2px rgba(15,23,38,.05), 0 1px 1px rgba(15,23,38,.04);
+  --shadow-md:0 8px 22px rgba(15,23,38,.09);
+  --sidebar-w:252px;
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;background:var(--gray-50);color:var(--ink);}
+body{font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{margin:0;font-weight:650;letter-spacing:-.012em;}
+button{font-family:inherit;cursor:pointer;}
+input,select{font-family:inherit;}
+::selection{background:var(--accent-100);}
+.app{display:grid;grid-template-columns:var(--sidebar-w) 1fr;min-height:100vh;}
+
+/* ---------- Sidebar ---------- */
+.sidebar{background:linear-gradient(180deg,var(--navy-900),var(--navy-800));color:#CBD6E6;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;z-index:40;}
+.sidebar-brand{display:flex;align-items:center;gap:11px;padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
+.brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--blue-600));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(14,156,149,.35);}
+.brand-mark svg{width:19px;height:19px;stroke:#fff;}
+.brand-text{display:flex;flex-direction:column;line-height:1.22;}
+.brand-text strong{color:#fff;font-size:14.8px;font-weight:700;letter-spacing:-.01em;}
+.brand-text span{color:#7E8DA6;font-size:11px;}
+.sidebar-nav{flex:1;overflow-y:auto;padding:16px 12px;display:flex;flex-direction:column;gap:2px;}
+.nav-item{display:flex;align-items:center;gap:11px;padding:9.5px 12px;border-radius:8px;color:#A9B7CC;text-decoration:none;font-size:13.3px;font-weight:500;border:none;background:transparent;width:100%;text-align:left;transition:background .12s,color .12s;}
+.nav-item svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.7;flex-shrink:0;}
+.nav-item:hover{background:rgba(255,255,255,.07);color:#fff;}
+.nav-item.active{background:rgba(14,156,149,.2);color:#fff;}
+.nav-item.active svg{stroke:#3FD9CD;}
+.sidebar-foot{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);}
+.foot-org{display:flex;align-items:center;gap:9px;}
+.foot-org-mark{width:28px;height:28px;border-radius:7px;background:#1A3D72;display:flex;align-items:center;justify-content:center;color:#9FC3E8;font-size:11px;font-weight:700;flex-shrink:0;}
+.foot-org div strong{display:block;color:#DCE5F0;font-size:12px;}
+.foot-org div span{color:#6E7E99;font-size:10.3px;}
+
+/* ---------- Main / topbar ---------- */
+.main{display:flex;flex-direction:column;min-width:0;}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--gray-200);padding:12px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--gray-100);border:1px solid var(--gray-200);border-radius:9px;padding:8px 12px;min-width:230px;flex:1;max-width:300px;}
+.search-box svg{width:15px;height:15px;stroke:var(--gray-500);flex-shrink:0;}
+.search-box input{border:none;background:transparent;outline:none;font-size:13px;width:100%;color:var(--ink);}
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;flex:2;}
+.filter-select{border:1px solid var(--gray-200);background:#fff;border-radius:8px;padding:7px 10px;font-size:12.4px;color:var(--gray-700);min-width:118px;max-width:210px;}
+.filter-select:focus{outline:2px solid var(--accent-100);}
+.filter-select.is-active{border-color:var(--accent);color:var(--accent-600);font-weight:600;background:var(--accent-100);}
+.topbar-actions{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.btn{display:flex;align-items:center;gap:7px;border-radius:8px;font-size:12.8px;font-weight:600;padding:8px 14px;border:1px solid transparent;white-space:nowrap;}
+.btn svg{width:14px;height:14px;stroke:currentColor;}
+.btn-primary{background:var(--navy-900);color:#fff;}
+.btn-primary:hover{background:var(--navy-700);}
+.btn-ghost{background:#fff;border-color:var(--gray-200);color:var(--gray-700);}
+.btn-ghost:hover{background:var(--gray-100);}
+.btn-sm{padding:6px 11px;font-size:11.8px;}
+.profile-chip{display:flex;align-items:center;gap:8px;padding:4px 10px 4px 4px;border-radius:20px;background:var(--gray-100);border:1px solid var(--gray-200);}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#fff;flex-shrink:0;}
+.profile-chip span{font-size:12.3px;font-weight:600;color:var(--ink);}
+.profile-chip small{display:block;font-size:10.5px;color:var(--gray-500);font-weight:500;}
+
+.content{padding:22px 28px 64px;max-width:1500px;width:100%;margin:0 auto;}
+.view{display:none;}
+.view.active{display:block;}
+.view-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:14px;flex-wrap:wrap;border-left:3px solid var(--accent);padding-left:12px;}
+.view-head h1{font-size:21px;color:var(--navy-900);}
+.view-head p{margin:4px 0 0;color:var(--gray-600);font-size:13px;}
+
+/* Active professional banner */
+.prof-banner{background:linear-gradient(135deg,var(--navy-900),var(--navy-700));border-radius:var(--radius-md);padding:14px 18px;margin-bottom:18px;color:#fff;display:flex;align-items:flex-start;gap:14px;box-shadow:var(--shadow-md);}
+.prof-banner .avatar{width:42px;height:42px;font-size:14px;background:var(--accent)!important;flex-shrink:0;}
+.prof-banner-body{flex:1;min-width:0;}
+.prof-banner-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.prof-banner-head strong{font-size:14.5px;}
+.prof-banner-head span{font-size:11.5px;color:#9FB3CE;font-weight:500;}
+.prof-banner-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.prof-proj-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:4px 10px;font-size:11.3px;font-weight:600;display:flex;align-items:center;gap:6px;}
+.prof-proj-chip em{font-style:normal;font-weight:500;color:#BFD3EA;font-size:10.3px;}
+.prof-banner-clear{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:7px;padding:6px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0;}
+.prof-banner-clear svg{width:12px;height:12px;stroke:currentColor;}
+
+/* KPI cards */
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px;}
+.kpi-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:14px 16px;box-shadow:var(--shadow-sm);cursor:pointer;transition:box-shadow .15s,transform .15s,border-color .15s;position:relative;overflow:hidden;}
+.kpi-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--gray-200));opacity:.85;}
+.kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-2px);border-color:var(--gray-300);}
+.kpi-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.kpi-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.kpi-icon svg{width:15px;height:15px;stroke-width:1.8;}
+.kpi-val{font-size:25px;font-weight:700;color:var(--navy-900);letter-spacing:-.02em;}
+.kpi-label{font-size:11.7px;color:var(--gray-600);margin-top:2px;}
+.kpi-sub{font-size:10.3px;color:var(--gray-500);margin-top:1px;}
+
+/* Generic panel */
+.panel{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-md);box-shadow:var(--shadow-sm);margin-bottom:20px;}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--gray-100);gap:10px;flex-wrap:wrap;}
+.panel-head h3{font-size:14.6px;color:var(--navy-900);}
+.panel-head .sub{font-size:11.4px;color:var(--gray-500);margin-top:2px;font-weight:500;}
+.panel-body{padding:16px 18px 18px;}
+.link-btn{font-size:12px;font-weight:600;color:var(--accent-600);background:none;border:none;display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.link-btn svg{width:13px;height:13px;}
+
+/* Quantitativo strip */
+.quant-strip{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.quant-tile{flex:1;min-width:118px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:10px;padding:10px 14px;position:relative;overflow:hidden;}
+.quant-tile::before{content:"";position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--qc,var(--gray-300));}
+.quant-tile .qicon{position:absolute;top:9px;right:11px;width:15px;height:15px;}
+.quant-tile .qicon svg{width:15px;height:15px;stroke-width:1.8;fill:none;}
+.quant-tile .qval{font-size:20px;font-weight:700;color:var(--navy-900);line-height:1;}
+.quant-tile .qlabel{font-size:10.5px;color:var(--gray-600);margin-top:4px;font-weight:600;}
+
+/* Table */
+.table-wrap{overflow-x:auto;}
+table.data-table{width:100%;border-collapse:collapse;font-size:12.6px;min-width:1000px;}
+table.data-table th{text-align:left;color:var(--gray-500);font-weight:650;font-size:10.8px;text-transform:uppercase;letter-spacing:.045em;padding:8px 12px;border-bottom:1px solid var(--gray-200);cursor:pointer;white-space:nowrap;user-select:none;}
+table.data-table th:hover{color:var(--navy-900);}
+table.data-table td{padding:10px 12px;border-bottom:1px solid var(--gray-100);vertical-align:middle;}
+table.data-table tbody tr:hover{background:var(--gray-50);}
+.proj-name-cell strong{display:block;color:var(--ink);font-size:13px;font-weight:600;}
+.proj-name-cell span{color:var(--gray-500);font-size:11px;}
+.status-tag{display:inline-flex;align-items:center;gap:5px;font-size:10.7px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.status-tag .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.crit-tag{font-size:10.7px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap;}
+.tipo-badge{font-size:10.3px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid;white-space:nowrap;}
+.tipo-badge.t-projeto{color:var(--blue-600);border-color:#C8DCF1;background:var(--blue-100);}
+.tipo-badge.t-sustentacao{color:var(--slate);border-color:var(--gray-300);background:var(--slate-100);}
+.people-count{font-size:11.5px;color:var(--gray-600);}
+.cell-muted{color:var(--gray-500);}
+.po-indef{font-size:10.8px;font-weight:600;color:var(--amber);background:var(--amber-100);padding:2px 8px;border-radius:6px;}
+
+/* Critical cards */
+.crit-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px;}
+.crit-card{border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:14px 15px;position:relative;background:#fff;}
+.crit-card.lvl-alta{border-left:4px solid var(--red);}
+.crit-card.lvl-pausado{border-left:4px solid var(--gray-500);}
+.crit-card h4{font-size:13.4px;color:var(--ink);margin-bottom:3px;}
+.crit-meta{font-size:11px;color:var(--gray-500);margin-bottom:10px;}
+.crit-row{display:flex;justify-content:space-between;gap:10px;font-size:11.7px;color:var(--gray-700);padding:4px 0;border-top:1px solid var(--gray-100);}
+.crit-row strong{font-weight:600;color:var(--ink);text-align:right;}
+.crit-note{margin-top:10px;background:var(--gray-50);border-radius:7px;padding:8px 10px;font-size:11.2px;color:var(--navy-700);border-left:3px solid var(--accent);}
+
+/* Capacity */
+.cap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;}
+.cap-item{border:1px solid var(--gray-200);border-radius:10px;padding:12px;}
+.cap-item-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+.cap-item-head strong{font-size:12.4px;color:var(--navy-900);}
+.cap-item-head span{font-size:10.4px;color:var(--gray-500);}
+.cap-bar-bg{height:6px;border-radius:4px;background:var(--gray-200);overflow:hidden;margin-bottom:6px;}
+.cap-bar-fill{height:100%;border-radius:4px;}
+.cap-overload{font-size:10.4px;color:var(--red);font-weight:700;display:flex;align-items:center;gap:3px;}
+.cap-overload svg{width:11px;height:11px;}
+.cap-ok{font-size:10.4px;color:var(--gray-500);}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--gray-200);margin-bottom:18px;}
+.tab-btn{padding:10px 16px;font-size:13px;font-weight:600;color:var(--gray-500);background:none;border:none;border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px;}
+.tab-btn.active{color:var(--navy-900);border-color:var(--accent);}
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+
+/* Map cards (hub & spoke) */
+.map-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.map-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.4px;color:var(--gray-600);}
+.map-legend span{display:flex;align-items:center;gap:6px;}
+.map-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.map-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
+.map-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:16px;box-shadow:var(--shadow-sm);transition:opacity .15s,transform .15s,box-shadow .15s;}
+.map-card.dimmed{opacity:.28;}
+.map-card.highlighted{box-shadow:0 0 0 2px var(--accent),var(--shadow-md);}
+.map-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:8px;}
+.map-card-head h4{font-size:13.5px;color:var(--ink);margin-bottom:3px;line-height:1.3;}
+.map-card-head .meta-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+.map-graph{position:relative;padding-top:10px;}
+.map-graph svg.connector{position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;}
+.po-row{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;margin:0 auto 18px;width:fit-content;position:relative;z-index:2;}
+.po-chip{display:flex;align-items:center;gap:7px;background:var(--navy-900);color:#fff;border-radius:20px;padding:5px 12px 5px 5px;}
+.po-chip .avatar{width:22px;height:22px;font-size:9.5px;}
+.po-chip small{display:block;font-size:8.6px;color:#9FB3CE;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.po-chip span{font-size:11.5px;font-weight:600;}
+.po-chip.unassigned{background:var(--amber-100);color:var(--amber);}
+.po-chip.selected{box-shadow:0 0 0 2px var(--accent);}
+.node-groups{display:flex;justify-content:space-around;gap:6px;position:relative;z-index:2;flex-wrap:wrap;}
+.node-group{flex:1;min-width:84px;text-align:center;}
+.node-group-label{font-size:9.4px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-500);margin-bottom:7px;display:block;}
+.person-chip{display:inline-flex;align-items:center;gap:5px;background:var(--gray-50);border:1px solid var(--gray-200);border-radius:16px;padding:4px 9px 4px 4px;margin:2px;font-size:10.7px;font-weight:600;color:var(--ink);transition:.12s;}
+.person-chip:hover{border-color:var(--gray-300);}
+.person-chip.selected{border-color:var(--accent);background:var(--accent-100);color:var(--accent-600);}
+.person-chip .avatar{width:18px;height:18px;font-size:8px;}
+.empty-chip{font-size:10.4px;color:var(--gray-300);font-style:italic;}
+
+/* Equipes */
+.finder-panel{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;}
+.finder-field{flex:1;min-width:240px;}
+.finder-field label{display:block;font-size:11.3px;font-weight:650;color:var(--gray-700);margin-bottom:6px;}
+.finder-field select{width:100%;border:1px solid var(--gray-200);border-radius:8px;padding:9px 11px;font-size:13px;background:var(--gray-50);}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(252px,1fr));gap:14px;}
+.team-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:14px;box-shadow:var(--shadow-sm);}
+.team-card.is-over{border-color:#F3CFC8;}
+.team-card-head{display:flex;gap:10px;align-items:center;margin-bottom:10px;}
+.team-card-head .avatar{width:38px;height:38px;font-size:13px;}
+.team-card-head strong{display:block;font-size:13px;color:var(--ink);}
+.team-card-head span{font-size:11px;color:var(--gray-500);}
+.team-card .proj-list{font-size:11px;color:var(--gray-600);margin:8px 0;line-height:1.6;}
+.team-card .proj-list b{color:var(--ink);font-weight:600;}
+.team-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+
+/* Kanban / Pipeline */
+.kanban-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.kanban-scroll{display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;align-items:flex-start;}
+.kanban-col{background:var(--gray-100);border-radius:10px;min-width:240px;flex-shrink:0;padding:10px;max-height:640px;display:flex;flex-direction:column;}
+.kanban-col-head{display:flex;justify-content:space-between;align-items:center;font-size:11.7px;font-weight:700;color:var(--navy-900);padding:2px 4px 10px;flex-shrink:0;}
+.kanban-col-head .count{background:#fff;border-radius:10px;padding:1px 7px;font-size:10.4px;color:var(--gray-600);}
+.kanban-cards{overflow-y:auto;}
+.kanban-card{background:#fff;border:1px solid var(--gray-200);border-radius:8px;padding:9px 10px;margin-bottom:8px;box-shadow:var(--shadow-sm);}
+.kanban-card .kc-title{font-size:12.2px;font-weight:650;color:var(--ink);margin-bottom:6px;line-height:1.3;}
+.kanban-card .kc-meta{display:flex;justify-content:space-between;align-items:center;font-size:10.3px;color:var(--gray-500);gap:6px;}
+.kanban-card .kc-meta + .kc-meta{margin-top:5px;}
+
+/* Indicators */
+.ind-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:16px;}
+.bars-list{display:flex;flex-direction:column;gap:10px;}
+.bars-row{display:grid;grid-template-columns:148px 1fr 32px;gap:10px;align-items:center;font-size:12px;}
+.bars-row .lbl{color:var(--gray-700);font-weight:600;}
+.bars-track{height:9px;background:var(--gray-200);border-radius:5px;overflow:hidden;}
+.bars-fill{height:100%;border-radius:5px;}
+.donut-wrap{display:flex;align-items:center;gap:22px;}
+.donut{width:138px;height:138px;border-radius:50%;flex-shrink:0;position:relative;}
+.donut::after{content:"";position:absolute;inset:26px;background:#fff;border-radius:50%;}
+.donut-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:2;}
+.donut-center strong{font-size:18px;color:var(--navy-900);}
+.donut-center span{font-size:9px;color:var(--gray-500);text-transform:uppercase;letter-spacing:.04em;}
+.donut-legend{font-size:12px;display:flex;flex-direction:column;gap:7px;}
+.donut-legend span{display:flex;align-items:center;gap:7px;}
+.donut-legend i{width:9px;height:9px;border-radius:3px;display:inline-block;flex-shrink:0;}
+
+/* Observações */
+.obs-card{border:1px solid var(--gray-200);border-radius:var(--radius-md);padding:14px 15px;margin-bottom:10px;background:#fff;}
+.obs-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px;flex-wrap:wrap;}
+.obs-card-head strong{font-size:13.2px;color:var(--ink);}
+.obs-text{font-size:12.4px;color:var(--gray-700);background:var(--gray-50);border-radius:7px;padding:9px 11px;border-left:3px solid var(--amber);}
+
+/* Placeholder */
+.placeholder-panel{text-align:center;padding:70px 30px;color:var(--gray-500);}
+.placeholder-panel svg{width:44px;height:44px;stroke:var(--gray-300);margin-bottom:14px;}
+.placeholder-panel h3{color:var(--navy-900);font-size:16px;margin-bottom:6px;}
+.placeholder-panel ul{list-style:none;display:inline-block;text-align:left;margin-top:16px;padding:0;font-size:12.5px;}
+.placeholder-panel li{padding:5px 0 5px 20px;position:relative;}
+.placeholder-panel li::before{content:"—";position:absolute;left:0;color:var(--gray-300);}
+
+/* Modal */
+.modal-bg{position:fixed;inset:0;background:rgba(10,27,51,.45);display:none;align-items:center;justify-content:center;z-index:100;}
+.modal-bg.active{display:flex;}
+.modal{background:#fff;border-radius:var(--radius-lg);width:480px;max-width:92vw;max-height:88vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.28);}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid var(--gray-100);}
+.modal-head h3{font-size:15px;color:var(--navy-900);}
+.modal-close{background:none;border:none;color:var(--gray-500);}
+.modal-close svg{width:18px;height:18px;}
+.modal-body{padding:18px 20px;}
+.form-field{margin-bottom:13px;}
+.form-field label{display:block;font-size:11.4px;font-weight:650;color:var(--gray-700);margin-bottom:5px;}
+.form-field input,.form-field select{width:100%;border:1px solid var(--gray-200);border-radius:7px;padding:8px 10px;font-size:13px;background:var(--gray-50);}
+.modal-foot{padding:14px 20px;border-top:1px solid var(--gray-100);display:flex;justify-content:flex-end;gap:8px;}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy-900);color:#fff;padding:12px 18px;border-radius:9px;font-size:12.8px;font-weight:600;box-shadow:var(--shadow-md);z-index:200;display:flex;align-items:center;gap:8px;opacity:0;transform:translateY(8px);transition:.25s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* Mobile */
+.menu-toggle{display:none;background:none;border:none;color:var(--navy-900);}
+.menu-toggle svg{width:22px;height:22px;stroke:currentColor;}
+@media (max-width:1180px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr);}
+  .ind-grid{grid-template-columns:1fr;}
+}
+@media (max-width:880px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{position:fixed;left:-260px;top:0;width:252px;transition:left .2s;}
+  .sidebar.open{left:0;}
+  .menu-toggle{display:flex;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .filter-row{flex-basis:100%;order:3;}
+  .search-box{max-width:none;}
+}
+@media (max-width:520px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .content{padding:16px;}
+  .topbar{padding:10px 14px;}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Novo projeto</h3>
+      <button class="modal-close" id="modalClose"></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="modalCancel">Cancelar</button>
+      <button class="btn btn-primary" id="modalSave">Salvar projeto</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* =========================================================
+   ICONS
+========================================================= */
+const ICON = {
+  overview:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="8" height="8" rx="1.6"/><rect x="3" y="13" width="8" height="8" rx="1.6"/><rect x="13" y="13" width="8" height="8" rx="1.6"/></svg>',
+  map:'<svg viewBox="0 0 24 24" fill="none"><circle cx="5" cy="6" r="2.1"/><circle cx="19" cy="6" r="2.1"/><circle cx="12" cy="19" r="2.1"/><path d="M6.7 7.6 11 17M17.3 7.6 13 17"/></svg>',
+  pipeline:'<svg viewBox="0 0 24 24" fill="none"><circle cx="3.4" cy="6" r="1.1" fill="currentColor" stroke="none"/><circle cx="3.4" cy="12" r="1.1" fill="currentColor" stroke="none"/><circle cx="3.4" cy="18" r="1.1" fill="currentColor" stroke="none"/><path d="M8 6h13M8 12h13M8 18h13"/></svg>',
+  users:'<svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3.1"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17.3" cy="9.4" r="2.3"/><path d="M15.6 14.3c2.5.4 4.3 2.4 4.3 5"/></svg>',
+  chart:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 20V10M11 20V4M18 20v-7"/><path d="M2 20h20" stroke-width="1.3"/></svg>',
+  alert:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 3 2 20h20L12 3z"/><path d="M12 9.3v4.6M12 17h.01"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none"><path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v4h4M9 12.3h6M9 16h6"/></svg>',
+  settings:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.16-1.5l1.8-1.3-1.6-2.7-2.1.6a7 7 0 0 0-1.4-.8L15 4h-3l-.5 2.1a7 7 0 0 0-1.4.8l-2-.6-1.7 2.7 1.8 1.3a7 7 0 0 0 0 3l-1.8 1.3 1.7 2.7 2-.6c.4.3.9.6 1.4.8L12 20h3l.5-2.2c.5-.2 1-.5 1.4-.8l2.1.6 1.6-2.7-1.8-1.3c.1-.4.16-1 .16-1.6z"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>',
+  plus:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0-4-4m4 4 4-4"/><path d="M5 19h14"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  note:'<svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5z"/><path d="M16 4v3h3M8 11h8M8 15h5"/></svg>',
+  arrowRight:'<svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>'
+};
+function icon(name){return ICON[name]||'';}
+
+/* =========================================================
+   DADOS — base real: 20260626_Gerenciamento_Projetos_Sistemas.xlsx (aba "Projetos")
+   Normalizações aplicadas: "Emanuelle Lobo"→"Emanuelle Lôbo"; "_" / "-" tratados como
+   "não atribuído"; "A definir" tratado como PO indefinido; nomes duplicados (mesma
+   sigla com track de Projeto e de Sustentação) recebem sufixo para diferenciação.
+========================================================= */
+const PROJECTS = [
+ {"id": 1, "nome": "SOPE", "tipo": "Sustentação", "status": "Em andamento", "crit": "Alta", "po": ["Emanuelle Lôbo", "Vanyle Pereira"], "poIndef": false, "sm": [], "back": ["Pedro Amaral"], "front": ["Letícia Oliveira"], "tester": ["Arthur Vieira"], "obs": ""},
+ {"id": 2, "nome": "SGCA", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Emanuelle Lôbo"], "poIndef": false, "sm": [], "back": ["Marlo Marques"], "front": ["Raíssa Penelúc"], "tester": [], "obs": ""},
+ {"id": 3, "nome": "Minha Saúde", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Emanuelle Lôbo"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["João Victor Lima", "Antônio Neri"], "front": ["Sandro Góes"], "tester": ["Yuri Góes"], "obs": ""},
+ {"id": 4, "nome": "Policlínicas", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Jakeline Oliveira"], "poIndef": false, "sm": [], "back": ["Alan Sampaio", "Jamison Queiroz", "Antônio Neri", "Joás"], "front": ["Letícia Oliveira", "Isadora Cruz"], "tester": ["Ana Victória"], "obs": ""},
+ {"id": 5, "nome": "SRA", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Felipe Barros"], "poIndef": false, "sm": [], "back": ["André Neri", "Lucas Cerqueira"], "front": ["Luiz Borges", "Juliana Matos"], "tester": ["Arthur Vieira"], "obs": ""},
+ {"id": 6, "nome": "SGETI", "tipo": "Projeto", "status": "Em andamento", "crit": "Baixa", "po": ["Angelo Nascimento"], "poIndef": false, "sm": [], "back": ["Lian Castro"], "front": ["Lian Castro"], "tester": ["Arthur Vieira"], "obs": ""},
+ {"id": 7, "nome": "AFSESAB (Projeto)", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Eliza Brito"], "poIndef": false, "sm": ["Adailton Cerqueira"], "back": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "front": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "tester": ["Yuri Góes"], "obs": ""},
+ {"id": 8, "nome": "SIMSESAB (Projeto)", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Eliza Brito"], "poIndef": false, "sm": ["Adailton Cerqueira"], "back": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "front": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "tester": ["Yuri Góes"], "obs": ""},
+ {"id": 9, "nome": "AFSESAB (Sustentação)", "tipo": "Sustentação", "status": "Em andamento", "crit": "Alta", "po": ["Rodrigo Hellstrom"], "poIndef": false, "sm": ["Adailton Cerqueira"], "back": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "front": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "tester": ["Yuri Góes"], "obs": ""},
+ {"id": 10, "nome": "SIGAF", "tipo": "Sustentação", "status": "Em andamento", "crit": "Alta", "po": ["Rodrigo Hellstrom"], "poIndef": false, "sm": ["Adailton Cerqueira"], "back": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "front": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "tester": ["Yuri Góes"], "obs": ""},
+ {"id": 11, "nome": "SIMSESAB (Sustentação)", "tipo": "Sustentação", "status": "Em andamento", "crit": "Alta", "po": ["Rodrigo Hellstrom"], "poIndef": false, "sm": ["Adailton Cerqueira"], "back": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "front": ["Adilton Seixas", "Filipe Assis", "Victor Menezes", "Gabriel Moreira"], "tester": ["Yuri Góes"], "obs": ""},
+ {"id": 12, "nome": "Rastreamento de Amostras", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Fabiana Granja"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["Gabriel Moreira"], "front": ["Daniel Carvalho"], "tester": ["Laís"], "obs": ""},
+ {"id": 13, "nome": "Portal CES", "tipo": "Projeto", "status": "Em andamento", "crit": "Baixa", "po": ["Felipe Barros"], "poIndef": false, "sm": [], "back": [], "front": ["Luiz Borges"], "tester": [], "obs": "Feito em Wordpress"},
+ {"id": 14, "nome": "SISTRANSPLANTE", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Fabiana Granja"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["Geison Santos"], "front": ["Isadora Cruz"], "tester": [], "obs": ""},
+ {"id": 15, "nome": "Plataforma Bahia", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Jakeline Oliveira"], "poIndef": false, "sm": [], "back": ["Raul Passos"], "front": ["Rafael Giovanni"], "tester": [], "obs": ""},
+ {"id": 16, "nome": "PULSAR", "tipo": "Sustentação", "status": "Em andamento", "crit": "Alta", "po": ["Felipe Barros"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["Pedro Amaral", "André Freitas"], "front": ["Alexandre Tiriba", "Rafael Giovanni"], "tester": ["Arthur Vieira"], "obs": ""},
+ {"id": 17, "nome": "Prestadores", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Angelo Nascimento"], "poIndef": false, "sm": [], "back": ["Lian Castro"], "front": ["Lian Castro"], "tester": [], "obs": ""},
+ {"id": 18, "nome": "E-Autorizador", "tipo": "Sustentação", "status": "Em andamento", "crit": "Média", "po": ["Angelo Nascimento"], "poIndef": false, "sm": [], "back": ["Lian Castro"], "front": ["Lian Castro"], "tester": [], "obs": ""},
+ {"id": 19, "nome": "SGI", "tipo": "Sustentação", "status": "Em andamento", "crit": "Média", "po": ["Fabiana Granja"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["Felipe Saboia", "Daniel Carvalho"], "front": ["Priscila Vinhas"], "tester": [], "obs": ""},
+ {"id": 20, "nome": "SISCOV", "tipo": "Sustentação", "status": "Em andamento", "crit": "Média", "po": ["Vanyle Pereira"], "poIndef": false, "sm": [], "back": ["André Otoni"], "front": ["Priscila Vinhas"], "tester": ["Arthur Vieira"], "obs": ""},
+ {"id": 21, "nome": "SIDI", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Rodrigo Hellstrom"], "poIndef": false, "sm": ["Adailton Cerqueira"], "back": ["Marlo Marques", "Joás"], "front": [], "tester": [], "obs": ""},
+ {"id": 22, "nome": "Lista Única", "tipo": "Sustentação", "status": "Em andamento", "crit": "Média", "po": ["Rodrigo Vaz"], "poIndef": false, "sm": [], "back": ["Gilclei Araújo"], "front": ["Gilclei Araújo"], "tester": [], "obs": ""},
+ {"id": 23, "nome": "SISNEFRO (Sustentação)", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Rodrigo Vaz"], "poIndef": false, "sm": [], "back": ["Gilclei Araújo"], "front": ["Gilclei Araújo"], "tester": [], "obs": ""},
+ {"id": 24, "nome": "SAD", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Rodrigo Vaz"], "poIndef": false, "sm": [], "back": ["Gilclei Araújo"], "front": ["Gilclei Araújo"], "tester": [], "obs": ""},
+ {"id": 25, "nome": "SCTA", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Rodrigo Vaz"], "poIndef": false, "sm": [], "back": ["Gilclei Araújo"], "front": ["Gilclei Araújo"], "tester": [], "obs": ""},
+ {"id": 26, "nome": "MAP", "tipo": "Sustentação", "status": "Em andamento", "crit": "Média", "po": ["Angelo Nascimento"], "poIndef": false, "sm": [], "back": ["Daniel Carvalho"], "front": ["Daniel Carvalho"], "tester": [], "obs": ""},
+ {"id": 27, "nome": "SISVO", "tipo": "Sustentação", "status": "Em andamento", "crit": "Média", "po": ["Alan Tiago"], "poIndef": false, "sm": ["Angela Sanches"], "back": ["Edgleidson Ferreira"], "front": ["Edgleidson Ferreira"], "tester": [], "obs": ""},
+ {"id": 28, "nome": "OBR (Sustentação)", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Alan Tiago"], "poIndef": false, "sm": ["Angela Sanches"], "back": ["Gabriel Moreira", "Antônio Neri"], "front": ["Gabriel Moreira"], "tester": [], "obs": ""},
+ {"id": 29, "nome": "SCTA - CRIL", "tipo": "Sustentação", "status": "Em andamento", "crit": "Baixa", "po": ["Rodrigo Vaz"], "poIndef": false, "sm": [], "back": ["Gilclei Araújo"], "front": ["Gilclei Araújo"], "tester": [], "obs": ""},
+ {"id": 30, "nome": "AGHUse (Sustentação)", "tipo": "Sustentação", "status": "Em andamento", "crit": "Alta", "po": ["Jade", "Elisa", "Maila"], "poIndef": false, "sm": ["Adailton Cerqueira", "Marcelo Santana"], "back": ["Caroline dos Santos", "Delivelton Rodrigues", "Lucas Nogueira", "Fabrício Carvalho", "Josafá Caldas", "Geovane dos Santos", "Pedro Carvalho", "Rodrigo Ladislau", "Kelson Borges", "Roberto Bernardes", "Carlos Marques", "Luis Biset"], "front": ["Caroline dos Santos", "Delivelton Rodrigues", "Lucas Nogueira", "Fabrício Carvalho", "Josafá Caldas", "Geovane dos Santos", "Pedro Carvalho", "Rodrigo Ladislau", "Kelson Borges", "Roberto Bernardes", "Carlos Marques", "Luis Biset"], "tester": ["Arthur Vieira", "Ana Victória"], "obs": ""},
+ {"id": 31, "nome": "AGHUse (Projeto)", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Jade", "Elisa", "Maila"], "poIndef": false, "sm": ["Adailton Cerqueira", "Marcelo Santana"], "back": ["Caroline dos Santos", "Delivelton Rodrigues", "Lucas Nogueira", "Fabrício Carvalho", "Josafá Caldas", "Geovane dos Santos", "Pedro Carvalho", "Rodrigo Ladislau", "Kelson Borges", "Roberto Bernardes", "Carlos Marques", "Luis Biset"], "front": ["Caroline dos Santos", "Delivelton Rodrigues", "Lucas Nogueira", "Fabrício Carvalho", "Josafá Caldas", "Geovane dos Santos", "Pedro Carvalho", "Rodrigo Ladislau", "Kelson Borges", "Roberto Bernardes", "Carlos Marques", "Luis Biset"], "tester": ["Arthur Vieira", "Ana Victória"], "obs": ""},
+ {"id": 32, "nome": "SISNEFRO (Projeto)", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Alan Tiago"], "poIndef": false, "sm": ["Angela Sanches"], "back": ["Cristian Silva"], "front": ["Juliana Matos"], "tester": ["Laís"], "obs": ""},
+ {"id": 33, "nome": "SIGWEB – Geo Portal", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Silvana"], "poIndef": false, "sm": [], "back": ["Jamison", "Tarcísio"], "front": ["Wagner", "Carlos Freitas", "Patrícia"], "tester": [], "obs": ""},
+ {"id": 34, "nome": "Aplicativo Minha Saúde", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Emanuelle Lôbo"], "poIndef": false, "sm": ["Sheyla Castro"], "back": [], "front": ["Marlo Marques", "Sandro Góes"], "tester": [], "obs": ""},
+ {"id": 35, "nome": "Aplicativo Mapa da Saúde", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Silvana"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["Jamison", "Tarcísio"], "front": ["Wagner", "Carlos Freitas", "Patrícia"], "tester": [], "obs": ""},
+ {"id": 36, "nome": "Chatbot TCU", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Eliza Brito"], "poIndef": false, "sm": ["Angela Sanches"], "back": [], "front": [], "tester": [], "obs": ""},
+ {"id": 37, "nome": "SIA – Corregedoria", "tipo": "Projeto", "status": "Em andamento", "crit": "Alta", "po": ["Joice Nunes"], "poIndef": false, "sm": ["Emanuelle Lôbo"], "back": ["André Freitas"], "front": ["Raíssa Penelúc", "Juliana Matos"], "tester": ["Maria Isabel", "Arthur Vieira"], "obs": ""},
+ {"id": 38, "nome": "SFTS", "tipo": "Projeto", "status": "Em andamento", "crit": "Média", "po": ["Alan Tiago"], "poIndef": false, "sm": ["Angela Sanches"], "back": ["Cristian Silva"], "front": ["João Carvalho"], "tester": ["Maria Isabel"], "obs": ""},
+ {"id": 39, "nome": "SAD + OXI", "tipo": "Projeto", "status": "Levantando Requisitos", "crit": "Média", "po": ["Felipe Barros", "Eliza Brito"], "poIndef": false, "sm": [], "back": ["André Neri", "Lucas Cerqueira"], "front": ["Luiz Borges", "Juliana Matos"], "tester": [], "obs": "Módulos no SRA"},
+ {"id": 40, "nome": "SIVAST", "tipo": "Projeto", "status": "Levantando Requisitos", "crit": "Média", "po": ["Eliza Brito"], "poIndef": false, "sm": [], "back": [], "front": [], "tester": [], "obs": "Complexidade altar por existir algumas integrações."},
+ {"id": 41, "nome": "SGEO TEC", "tipo": "Projeto", "status": "Levantando Requisitos", "crit": "Média", "po": ["Fabiana Granja"], "poIndef": false, "sm": [], "back": [], "front": [], "tester": [], "obs": "Será criado o módulo de estágio técnico e depois migrado o módulo existente hoje no SGEO"},
+ {"id": 42, "nome": "Planejamento de Aquisição", "tipo": "Projeto", "status": "Levantando Requisitos", "crit": "Baixa", "po": ["Alan Tiago"], "poIndef": false, "sm": ["Angela Sanches"], "back": [], "front": [], "tester": [], "obs": ""},
+ {"id": 43, "nome": "OBR (Projeto)", "tipo": "Projeto", "status": "Levantando Requisitos", "crit": "Média", "po": ["Joice Nunes"], "poIndef": false, "sm": [], "back": [], "front": [], "tester": [], "obs": "Equipe de Designer fazendo as análises para o layout do sistema"},
+ {"id": 44, "nome": "SUREM", "tipo": "Projeto", "status": "Backlog", "crit": "Média", "po": ["Eliza Brito"], "poIndef": false, "sm": [], "back": [], "front": [], "tester": [], "obs": ""},
+ {"id": 45, "nome": "TFD", "tipo": "Projeto", "status": "Backlog", "crit": "Média", "po": [], "poIndef": true, "sm": [], "back": [], "front": [], "tester": [], "obs": ""},
+ {"id": 46, "nome": "PGS", "tipo": "Sustentação", "status": "Backlog", "crit": "Baixa", "po": ["Joice Nunes"], "poIndef": false, "sm": [], "back": [], "front": [], "tester": [], "obs": ""},
+ {"id": 47, "nome": "Sistema de Registro de Vacinas dos Municípios", "tipo": "Projeto", "status": "Backlog", "crit": "Baixa", "po": [], "poIndef": true, "sm": [], "back": [], "front": [], "tester": [], "obs": ""},
+ {"id": 48, "nome": "CISBA", "tipo": "Sustentação", "status": "Concluído", "crit": "Baixa", "po": ["Rodrigo Hellstrom"], "poIndef": false, "sm": [], "back": ["Cristian Silva"], "front": ["Raíssa Penelúc", "Sandro Góes"], "tester": ["Arthur Vieira"], "obs": ""},
+ {"id": 49, "nome": "SOP", "tipo": "Sustentação", "status": "Concluído", "crit": "Média", "po": ["Jakeline Oliveira"], "poIndef": false, "sm": [], "back": ["André Otoni"], "front": ["Priscila Vinhas"], "tester": [], "obs": ""},
+ {"id": 50, "nome": "SIGTS", "tipo": "Projeto", "status": "Pausado", "crit": "Baixa", "po": ["Fabiana Granja"], "poIndef": false, "sm": ["Sheyla Castro"], "back": ["Geison Santos"], "front": ["Isadora Cruz"], "tester": [], "obs": "Aguardando definição de regras da área"}
+];
+
+/* =========================================================
+   HELPERS
+========================================================= */
+function initials(name){ return name.split(' ').filter(w=>w.length>1).slice(0,2).map(w=>w[0]).join('').toUpperCase() || name[0]; }
+function slug(name){ return name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z\s]/g,'').trim().replace(/\s+/g,'.'); }
+function avatarColor(role){ return {po:'#0A1B33',sm:'#7A5AB0',back:'#2E6FB0',front:'#0E9C95',tester:'#B5790A'}[role]||'#838FA1'; }
+function avatar(name,role,size){
+  return `<span class="avatar" style="background:${avatarColor(role)};${size?`width:${size}px;height:${size}px;font-size:${size*0.34}px`:''}">${initials(name)}</span>`;
+}
+const STATUS_COLOR = {
+  'Backlog':{bg:'var(--gray-100)',fg:'var(--gray-600)',dot:'var(--gray-500)'},
+  'Levantando Requisitos':{bg:'var(--gray-100)',fg:'var(--gray-600)',dot:'var(--gray-500)'},
+  'Em andamento':{bg:'var(--accent-100)',fg:'var(--accent-600)',dot:'var(--accent)'},
+  'Concluído':{bg:'var(--green-100)',fg:'var(--green)',dot:'var(--green)'},
+  'Pausado':{bg:'var(--red-100)',fg:'var(--red)',dot:'var(--red)'}
+};
+const CRIT_COLOR = {'Baixa':{bg:'var(--gray-100)',fg:'var(--gray-600)'},'Média':{bg:'var(--amber-100)',fg:'var(--amber)'},'Alta':{bg:'var(--red-100)',fg:'var(--red)'}};
+function statusTag(s){ const c=STATUS_COLOR[s]||STATUS_COLOR['Backlog']; return `<span class="status-tag" style="background:${c.bg};color:${c.fg}"><span class="dot" style="background:${c.dot}"></span>${s}</span>`; }
+function critTag(r){ const c=CRIT_COLOR[r]||CRIT_COLOR['Baixa']; return `<span class="crit-tag" style="background:${c.bg};color:${c.fg}">${r}</span>`; }
+function tipoBadge(t){ return `<span class="tipo-badge ${t==='Projeto'?'t-projeto':'t-sustentacao'}">${t}</span>`; }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),2600); }
+
+const ROLES = ['po','sm','back','front','tester'];
+const ROLE_LABEL = {po:'Product Owner',sm:'Scrum Master',back:'Dev Back-end',front:'Dev Front-end',tester:'QA / Tester'};
+const ROLE_CAP = {po:4,sm:4,back:3,front:3,tester:4};
+
+function allPeopleOf(p){ return [...p.po, ...p.sm, ...p.back, ...p.front, ...p.tester]; }
+function teamSize(p){ return new Set(allPeopleOf(p)).size; }
+
+/* =========================================================
+   ROSTER (derivado dos PROJECTS — cada pessoa pode ter vários papéis)
+========================================================= */
+function buildRoster(){
+  const map = {};
+  PROJECTS.forEach(p=>{
+    ROLES.forEach(role=>{
+      p[role].forEach(name=>{
+        if(!map[name]) map[name]={name, roles:{}, allIds:new Set()};
+        if(!map[name].roles[role]) map[name].roles[role]=new Set();
+        map[name].roles[role].add(p.id);
+        map[name].allIds.add(p.id);
+      });
+    });
+  });
+  return Object.values(map).map(r=>({
+    name:r.name,
+    roleList:Object.keys(r.roles),
+    roles:r.roles,
+    totalProjects:r.allIds.size,
+    overRoles:Object.keys(r.roles).filter(role=>r.roles[role].size>ROLE_CAP[role])
+  }));
+}
+const ROSTER = buildRoster();
+const ROSTER_BY_NAME = Object.fromEntries(ROSTER.map(r=>[r.name,r]));
+const ALL_NAMES = ROSTER.map(r=>r.name).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+
+/* =========================================================
+   STATE / FILTERS
+========================================================= */
+const state = { search:'', status:'', tipo:'', crit:'', profissional:'', sortCol:'nome', sortDir:1, mapSelectedPerson:null };
+
+function matchesFilters(p){
+  if(state.status && p.status!==state.status) return false;
+  if(state.tipo && p.tipo!==state.tipo) return false;
+  if(state.crit && p.crit!==state.crit) return false;
+  if(state.profissional && !allPeopleOf(p).includes(state.profissional)) return false;
+  if(state.search){
+    const s = state.search.toLowerCase();
+    const hay = [p.nome, p.tipo, p.status, ...allPeopleOf(p)].join(' ').toLowerCase();
+    if(!hay.includes(s)) return false;
+  }
+  return true;
+}
+
+/* =========================================================
+   LAYOUT SHELL
+========================================================= */
+const NAV = [
+ {id:'overview',label:'Visão Geral',icon:'overview'},
+ {id:'projects',label:'Projetos',icon:'map'},
+ {id:'pipeline',label:'Pipeline',icon:'pipeline'},
+ {id:'team',label:'Equipes',icon:'users'},
+ {id:'indicators',label:'Indicadores',icon:'chart'},
+ {id:'observations',label:'Observações',icon:'note'},
+ {id:'reports',label:'Relatórios',icon:'doc'},
+ {id:'settings',label:'Configurações',icon:'settings'}
+];
+
+function renderShell(){
+  const app = document.getElementById('app');
+  app.innerHTML = `
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-mark">${icon('map')}</div>
+      <div class="brand-text"><strong>Saúde Digital - SISD</strong><span>Gestão</span></div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav">
+      ${NAV.map(n=>`<button class="nav-item" data-view="${n.id}">${icon(n.icon)}${n.label}</button>`).join('')}
+    </nav>
+    <div class="sidebar-foot">
+      <div class="foot-org">
+        <div class="foot-org-mark">BA</div>
+        <div><strong>SESAB · Estado da Bahia</strong><span>Diretoria de Tecnologia</span></div>
+      </div>
+    </div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <button class="menu-toggle" id="menuToggle">${icon('users')}</button>
+      <div class="search-box">${icon('search')}<input id="globalSearch" placeholder="Buscar projeto ou profissional..."></div>
+      <div class="filter-row">
+        <select class="filter-select" id="fStatus"><option value="">Status</option></select>
+        <select class="filter-select" id="fTipo"><option value="">Tipo</option></select>
+        <select class="filter-select" id="fCrit"><option value="">Criticidade</option></select>
+        <select class="filter-select" id="fProfissional" style="max-width:240px"><option value="">Profissional · todos</option></select>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost" id="btnExport">${icon('download')}Exportar</button>
+        <button class="btn btn-primary" id="btnNewProject">${icon('plus')}Novo Projeto</button>
+        <div class="profile-chip">${avatar('Coordenação TI','po',30)}<div><span>Coordenação de TI</span><small>Gestão de Portfólio</small></div></div>
+      </div>
+    </header>
+    <div class="content" id="content"></div>
+  </div>`;
+
+  fillSelect('fStatus', ['Backlog','Levantando Requisitos','Em andamento','Pausado','Concluído']);
+  fillSelect('fTipo', ['Projeto','Sustentação']);
+  fillSelect('fCrit', ['Baixa','Média','Alta']);
+  const profSel = document.getElementById('fProfissional');
+  ALL_NAMES.forEach(n=>{
+    const r = ROSTER_BY_NAME[n];
+    const o = document.createElement('option');
+    o.value = n; o.textContent = `${n} · ${r.totalProjects} projeto(s)`;
+    profSel.appendChild(o);
+  });
+
+  document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
+  document.getElementById('menuToggle').addEventListener('click',()=>document.getElementById('sidebar').classList.toggle('open'));
+  document.getElementById('globalSearch').addEventListener('input',e=>{state.search=e.target.value;refreshFilteredViews();});
+  document.getElementById('fStatus').addEventListener('change',e=>{state.status=e.target.value;markActive('fStatus');refreshFilteredViews();});
+  document.getElementById('fTipo').addEventListener('change',e=>{state.tipo=e.target.value;markActive('fTipo');refreshFilteredViews();});
+  document.getElementById('fCrit').addEventListener('change',e=>{state.crit=e.target.value;markActive('fCrit');refreshFilteredViews();});
+  document.getElementById('fProfissional').addEventListener('change',e=>{state.profissional=e.target.value;markActive('fProfissional');refreshFilteredViews();});
+  document.getElementById('btnExport').addEventListener('click',exportCSV);
+  document.getElementById('btnNewProject').addEventListener('click',openNewProjectModal);
+  document.getElementById('modalClose').addEventListener('click',closeModal);
+  document.getElementById('modalCancel').addEventListener('click',closeModal);
+}
+function fillSelect(id,values){ const sel=document.getElementById(id); values.forEach(v=>{const o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);}); }
+function markActive(id){ const el=document.getElementById(id); el.classList.toggle('is-active', !!el.value); }
+
+function setProfissional(name){
+  state.profissional = name;
+  const sel = document.getElementById('fProfissional');
+  if(sel){ sel.value = name||''; markActive('fProfissional'); }
+  refreshFilteredViews();
+}
+
+let currentView='overview';
+function setView(id){
+  currentView=id;
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
+  document.getElementById('sidebar').classList.remove('open');
+  const renderers = {overview:renderOverview,projects:renderProjects,pipeline:renderPipeline,team:renderTeam,indicators:renderIndicators,observations:renderObservations,
+    reports:renderReports,
+    settings:()=>renderPlaceholder('Configurações',['Controle de permissões por perfil (gestor, PO, dev, QA)','Conexão direta à planilha/base de origem (atualização automática)','Personalização de campos, papéis e limites de capacidade'])};
+  (renderers[id]||renderOverview)();
+}
+function refreshFilteredViews(){
+  const renderers = {overview:renderOverview,projects:renderProjects,pipeline:renderPipeline,team:renderTeam,indicators:renderIndicators,observations:renderObservations};
+  if(renderers[currentView]) renderers[currentView]();
+}
+
+/* =========================================================
+   BANNER — profissional selecionado (aparece em todas as views relevantes)
+========================================================= */
+function professionalBannerHTML(){
+  if(!state.profissional) return '';
+  const name = state.profissional;
+  const r = ROSTER_BY_NAME[name];
+  if(!r) return '';
+  const projs = PROJECTS.filter(p=>allPeopleOf(p).includes(name));
+  const roleOf = (p)=> ROLES.filter(role=>p[role].includes(name)).map(role=>ROLE_LABEL[role]).join(' + ');
+  return `<div class="prof-banner">
+    ${avatar(name,r.roleList[0],42)}
+    <div class="prof-banner-body">
+      <div class="prof-banner-head">
+        <div><strong>${name}</strong> <span>· ${r.roleList.map(rl=>ROLE_LABEL[rl]).join(', ')} · atua em ${projs.length} projeto(s)</span></div>
+        <button class="prof-banner-clear" onclick="setProfissional(null)">${icon('x')}Limpar filtro</button>
+      </div>
+      <div class="prof-banner-chips">
+        ${projs.map(p=>`<span class="prof-proj-chip">${p.nome} <em>${roleOf(p)}</em></span>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function injectBanner(container){
+  const b = professionalBannerHTML();
+  if(b) container.insertAdjacentHTML('afterbegin', b);
+}
+
+/* =========================================================
+   VISÃO GERAL
+========================================================= */
+function renderOverview(){
+  const total = PROJECTS.length;
+  const byStatus = name => PROJECTS.filter(p=>p.status===name).length;
+  const poIndef = PROJECTS.filter(p=>p.poIndef).length;
+  const totalPessoas = ALL_NAMES.length;
+
+  const kpis = [
+   {label:'Total de projetos',sub:`${new Set(PROJECTS.map(p=>p.nome.replace(/ \((Projeto|Sustentação)\)$/,''))).size} sistemas únicos`,val:total,icon:'overview',color:'navy-900',f:{}},
+   {label:'Em andamento',val:byStatus('Em andamento'),icon:'pipeline',color:'accent',f:{status:'Em andamento'}},
+   {label:'Levantando requisitos',val:byStatus('Levantando Requisitos'),icon:'note',color:'gray',f:{status:'Levantando Requisitos'}},
+   {label:'Em backlog',val:byStatus('Backlog'),icon:'pipeline',color:'gray',f:{status:'Backlog'}},
+   {label:'PO a definir',val:poIndef,icon:'user',color:'amber',f:{}},
+   {label:'Profissionais envolvidos',val:totalPessoas,icon:'users',color:'navy-900',f:null,nav:'team'}
+  ];
+  const colorVar = c=>({accent:'var(--accent)',green:'var(--green)',red:'var(--red)',amber:'var(--amber)',gray:'var(--gray-500)','navy-900':'var(--navy-900)'})[c];
+  const bgVar = c=>({accent:'var(--accent-100)',green:'var(--green-100)',red:'var(--red-100)',amber:'var(--amber-100)',gray:'var(--gray-100)','navy-900':'var(--gray-100)'})[c];
+
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="view-head">
+    <div><h1>Visão Geral do Portfólio</h1><p>Panorama executivo de ${total} frentes de tecnologia e saúde digital da SESAB, com base na planilha de gerenciamento de projetos.</p></div>
+  </div>
+  <div class="kpi-grid">
+    ${kpis.map(k=>`
+    <div class="kpi-card" style="--kc:${colorVar(k.color)}" data-filter='${k.f?JSON.stringify(k.f):""}' data-nav="${k.nav||''}">
+      <div class="kpi-top"><div class="kpi-icon" style="background:${bgVar(k.color)}">${icon(k.icon).replace('<svg','<svg style="stroke:'+colorVar(k.color)+'"')}</div></div>
+      <div class="kpi-val">${k.val}</div>
+      <div class="kpi-label">${k.label}</div>
+      ${k.sub?`<div class="kpi-sub">${k.sub}</div>`:''}
+    </div>`).join('')}
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3>Portfólio de Projetos</h3><div class="sub">Tabela filtrável — clique nos cabeçalhos para ordenar</div></div>
+      <button class="link-btn" onclick="setView('projects')">Ver mapa de equipe ${icon('arrowRight')}</button>
+    </div>
+    <div class="panel-body" id="portfolioPanelBody">
+      <div class="quant-strip" id="quantStrip"></div>
+      <div class="table-wrap" id="portfolioTableWrap"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3>Pontos de atenção</h3><div class="sub">Criticidade alta e projetos pausados</div></div></div>
+    <div class="panel-body crit-grid" id="criticalGrid"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3>Observações registradas</h3><div class="sub">Notas da equipe sobre escopo, dependências e pendências</div></div>
+      <button class="link-btn" onclick="setView('observations')">Ver todas ${icon('arrowRight')}</button>
+    </div>
+    <div class="panel-body" id="obsPreview"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3>Distribuição de capacidade da equipe</h3><div class="sub">Quantidade de frentes por papel — limite de referência configurável pelo gestor</div></div>
+      <button class="link-btn" onclick="setView('team')">Ver equipe completa ${icon('arrowRight')}</button>
+    </div>
+    <div class="panel-body cap-grid" id="capacityGrid"></div>
+  </div>`;
+
+  injectBanner(c);
+
+  document.querySelectorAll('.kpi-card').forEach(card=>card.addEventListener('click',()=>{
+    const nav = card.dataset.nav;
+    if(nav){ setView(nav); return; }
+    const f = card.dataset.filter; if(!f) return;
+    const obj = JSON.parse(f);
+    state.status = obj.status||''; state.crit = obj.crit||''; state.tipo=''; state.profissional='';
+    ['fStatus','fTipo','fCrit','fProfissional'].forEach(id=>{document.getElementById(id).value='';markActive(id);});
+    if(obj.status){ document.getElementById('fStatus').value=obj.status; markActive('fStatus'); }
+    if(obj.crit){ document.getElementById('fCrit').value=obj.crit; markActive('fCrit'); }
+    setView('projects');
+    document.querySelector('.tab-btn[data-tab="tabela"]').click();
+  }));
+
+  renderPortfolioTable(document.getElementById('portfolioTableWrap'), PROJECTS);
+  renderQuantStrip('quantStrip', PROJECTS.filter(matchesFilters));
+  renderCriticalGrid();
+  renderObsPreview();
+  renderCapacityGrid();
+}
+
+function renderCriticalGrid(){
+  const crit = PROJECTS.filter(p=>p.crit==='Alta' || p.status==='Pausado');
+  const grid = document.getElementById('criticalGrid');
+  if(!crit.length){ grid.innerHTML = '<p class="cell-muted">Nenhum projeto em situação crítica no momento.</p>'; return; }
+  grid.innerHTML = crit.map(p=>{
+    const lvl = p.status==='Pausado' ? 'pausado' : 'alta';
+    let acao = 'Acompanhar evolução na próxima reunião de status.';
+    if(p.status==='Pausado') acao = 'Verificar com a área demandante a definição pendente para retomada.';
+    else if(p.poIndef) acao = 'Definir Product Owner para destravar a priorização.';
+    else if(p.crit==='Alta') acao = 'Manter prioridade de acompanhamento dado o nível de criticidade.';
+    return `<div class="crit-card lvl-${lvl}">
+      <h4>${p.nome}</h4>
+      <div class="crit-meta">${tipoBadge(p.tipo)} ${statusTag(p.status)}</div>
+      <div class="crit-row"><span>PO</span><strong>${p.poIndef?'A definir':p.po.join(', ')}</strong></div>
+      <div class="crit-row"><span>Criticidade</span><strong>${p.crit}</strong></div>
+      <div class="crit-row"><span>Equipe</span><strong>${teamSize(p)} pessoa(s)</strong></div>
+      ${p.obs?`<div class="crit-row"><span>Observação</span><strong>${p.obs}</strong></div>`:''}
+      <div class="crit-note">${acao}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderObsPreview(){
+  const withObs = PROJECTS.filter(p=>p.obs);
+  const el = document.getElementById('obsPreview');
+  if(!withObs.length){ el.innerHTML='<p class="cell-muted">Nenhuma observação registrada.</p>'; return; }
+  el.innerHTML = withObs.map(p=>`<div class="obs-card">
+    <div class="obs-card-head"><strong>${p.nome}</strong>${statusTag(p.status)}</div>
+    <div class="obs-text">${p.obs}</div>
+  </div>`).join('');
+}
+
+function renderCapacityGrid(){
+  const byRole = {po:[],sm:[],back:[],front:[],tester:[]};
+  ROSTER.forEach(r=>ROLES.forEach(role=>{ if(r.roles[role]) byRole[role].push(r); }));
+  const grid = document.getElementById('capacityGrid');
+  grid.innerHTML = ROLES.map(role=>{
+    const list = byRole[role];
+    const over = list.filter(r=>r.roles[role].size>ROLE_CAP[role]).length;
+    return `<div class="cap-item">
+      <div class="cap-item-head"><strong>${ROLE_LABEL[role]}</strong><span>${list.length} pessoas</span></div>
+      <div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${over?100:55}%;background:${over?'var(--red)':'var(--accent)'}"></div></div>
+      ${over ? `<div class="cap-overload">${icon('alert')} ${over} acima de ${ROLE_CAP[role]} projeto(s)</div>` : `<div class="cap-ok">Dentro da capacidade de referência</div>`}
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   QUANTITATIVO — projetos / PO / dev front / dev back / QA
+   (respeita os filtros ativos, igual à tabela)
+========================================================= */
+function renderQuantStrip(containerId, list){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const uniq = role => new Set(list.flatMap(p=>p[role])).size;
+  const stats = [
+    {label:'Projetos', val:list.length, color:'var(--navy-900)', ic:'overview'},
+    {label:'Product Owners', val:uniq('po'), color:'var(--navy-900)', ic:'user'},
+    {label:'Dev Front-end', val:uniq('front'), color:'var(--accent)', ic:'user'},
+    {label:'Dev Back-end', val:uniq('back'), color:'var(--blue-600)', ic:'user'},
+    {label:'QA / Tester', val:uniq('tester'), color:'var(--amber)', ic:'user'}
+  ];
+  el.innerHTML = stats.map(s=>`<div class="quant-tile" style="--qc:${s.color}">
+      <div class="qicon" style="color:${s.color}">${icon(s.ic)}</div>
+      <div class="qval">${s.val}</div>
+      <div class="qlabel">${s.label}</div>
+    </div>`).join('');
+}
+
+/* =========================================================
+   TABELA (reutilizável)
+========================================================= */
+const TABLE_COLS = [
+ {key:'nome',label:'Projeto'},
+ {key:'tipo',label:'Tipo'},
+ {key:'status',label:'Status'},
+ {key:'crit',label:'Criticidade'},
+ {key:'po',label:'Product Owner'},
+ {key:'sm',label:'Scrum Master'},
+ {key:'equipe',label:'Equipe'}
+];
+function renderPortfolioTable(container, list){
+  let data = list.filter(matchesFilters);
+  data.sort((a,b)=>{
+    let av = state.sortCol==='equipe' ? teamSize(a) : a[state.sortCol];
+    let bv = state.sortCol==='equipe' ? teamSize(b) : b[state.sortCol];
+    if(Array.isArray(av)) av=av.join(', '); if(Array.isArray(bv)) bv=bv.join(', ');
+    if(typeof av==='string') av=av.toLowerCase(); if(typeof bv==='string') bv=bv.toLowerCase();
+    return av>bv? state.sortDir : av<bv? -state.sortDir : 0;
+  });
+  container.innerHTML = `<table class="data-table">
+   <thead><tr>${TABLE_COLS.map(c=>`<th data-col="${c.key}">${c.label} ${state.sortCol===c.key?(state.sortDir>0?'▲':'▼'):''}</th>`).join('')}</tr></thead>
+   <tbody>${data.map(p=>`
+     <tr>
+       <td class="proj-name-cell"><strong>${p.nome}</strong></td>
+       <td>${tipoBadge(p.tipo)}</td>
+       <td>${statusTag(p.status)}</td>
+       <td>${critTag(p.crit)}</td>
+       <td>${p.poIndef?'<span class="po-indef">A definir</span>':p.po.join(', ')}</td>
+       <td class="cell-muted">${p.sm.length?p.sm.join(', '):'—'}</td>
+       <td class="people-count">${teamSize(p)} pessoa(s)</td>
+     </tr>`).join('') || `<tr><td colspan="7" class="cell-muted" style="padding:20px;text-align:center">Nenhum projeto corresponde aos filtros aplicados.</td></tr>`}
+   </tbody></table>`;
+  container.querySelectorAll('th').forEach(th=>th.addEventListener('click',()=>{
+    const col=th.dataset.col;
+    state.sortDir = (state.sortCol===col) ? -state.sortDir : 1;
+    state.sortCol = col;
+    renderPortfolioTable(container,list);
+  }));
+}
+
+/* =========================================================
+   EXPORT CSV
+========================================================= */
+function exportCSV(){
+  const data = PROJECTS.filter(matchesFilters);
+  const headers = ['Projeto','Tipo','Status','Criticidade','Product Owner','Scrum Master','Dev Back-end','Dev Front-end','Tester','Observação'];
+  const rows = data.map(p=>[p.nome,p.tipo,p.status,p.crit,p.poIndef?'A definir':p.po.join('; '),p.sm.join('; '),p.back.join('; '),p.front.join('; '),p.tester.join('; '),p.obs]);
+  const csv = [headers, ...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'portfolio_projetos_sesab.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  toast(`Relatório exportado: ${data.length} projeto(s).`);
+}
+
+/* =========================================================
+   PROJETOS (Mapa de Equipe + Tabela)
+========================================================= */
+function renderProjects(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="view-head">
+    <div><h1>Projetos</h1><p>Mapa de vínculo entre cada projeto e sua equipe técnica, e visão tabular completa do portfólio.</p></div>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="mapa">${icon('map')}Mapa de Equipe</button>
+    <button class="tab-btn" data-tab="tabela">${icon('pipeline')}Tabela completa</button>
+  </div>
+  <div class="tab-panel active" id="tab-mapa"></div>
+  <div class="tab-panel" id="tab-tabela"><div class="panel"><div class="panel-body">
+    <div class="quant-strip" id="quantStripFull"></div>
+    <div class="table-wrap" id="fullTableWrap"></div>
+  </div></div></div>`;
+
+  injectBanner(c);
+
+  document.querySelectorAll('.tab-btn').forEach(b=>b.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='mapa') drawAllConnectors();
+  }));
+
+  renderMapView(document.getElementById('tab-mapa'));
+  renderPortfolioTable(document.getElementById('fullTableWrap'), PROJECTS);
+  renderQuantStrip('quantStripFull', PROJECTS.filter(matchesFilters));
+  requestAnimationFrame(drawAllConnectors);
+  window.addEventListener('resize', drawAllConnectors);
+}
+
+function renderMapView(container){
+  container.innerHTML = `
+   <div class="map-toolbar">
+     <div class="map-legend">
+       <span><i style="background:var(--navy-900)"></i> Product Owner</span>
+       <span><i style="background:#7A5AB0"></i> Scrum Master</span>
+       <span><i style="background:var(--blue-600)"></i> Dev Back-end</span>
+       <span><i style="background:var(--accent)"></i> Dev Front-end</span>
+       <span><i style="background:#B5790A"></i> QA / Tester</span>
+     </div>
+   </div>
+   <div class="map-grid" id="mapGrid"></div>`;
+
+  const grid = document.getElementById('mapGrid');
+  const list = PROJECTS.filter(matchesFilters);
+  if(!list.length){ grid.innerHTML='<p class="cell-muted">Nenhum projeto corresponde aos filtros aplicados.</p>'; return; }
+
+  grid.innerHTML = list.map(p=>{
+    const groups = [
+      {key:'sm',label:'Scrum Master',people:p.sm},
+      {key:'back',label:'Back-end',people:p.back},
+      {key:'front',label:'Front-end',people:p.front},
+      {key:'tester',label:'QA / Tester',people:p.tester}
+    ];
+    return `<div class="map-card" data-pid="${p.id}">
+      <div class="map-card-head">
+        <div><h4>${p.nome}</h4></div>
+      </div>
+      <div class="meta-row">${tipoBadge(p.tipo)} ${statusTag(p.status)} ${critTag(p.crit)}</div>
+      <div class="map-graph">
+        <svg class="connector"></svg>
+        <div class="po-row">
+          ${p.poIndef ? `<span class="po-chip unassigned" data-person="">${avatar('?','po')}<span><small>Product Owner</small>A definir</span></span>`
+            : p.po.map(n=>`<span class="po-chip" data-person="${n}">${avatar(n,'po')}<span><small>Product Owner</small>${n}</span></span>`).join('')}
+        </div>
+        <div class="node-groups">
+          ${groups.map(g=>`<div class="node-group" data-group>
+            <span class="node-group-label">${g.label}</span>
+            ${g.people.length? g.people.map(n=>`<span class="person-chip" data-person="${n}" data-role="${g.key}">${avatar(n,g.key)}${n}</span>`).join('') : '<span class="empty-chip">Não atribuído</span>'}
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('[data-person]').forEach(el=>{
+    if(!el.dataset.person) return;
+    el.addEventListener('click',()=>{
+      const name = el.dataset.person;
+      state.mapSelectedPerson = (state.mapSelectedPerson===name) ? null : name;
+      applyMapSelection();
+    });
+  });
+  applyMapSelection();
+  requestAnimationFrame(drawAllConnectors);
+}
+
+function applyMapSelection(){
+  const sel = state.mapSelectedPerson;
+  document.querySelectorAll('.map-card').forEach(card=>{
+    const has = sel ? !!card.querySelector(`[data-person="${sel}"]`) : true;
+    card.classList.toggle('dimmed', !!sel && !has);
+    card.classList.toggle('highlighted', !!sel && has);
+  });
+  document.querySelectorAll('.person-chip, .po-chip').forEach(el=>{
+    el.classList.toggle('selected', !!sel && el.dataset.person===sel);
+  });
+}
+
+function drawAllConnectors(){
+  document.querySelectorAll('.map-card').forEach(card=>{
+    const graph = card.querySelector('.map-graph');
+    const svg = card.querySelector('svg.connector');
+    const poRow = card.querySelector('.po-row');
+    if(!graph || !svg || !poRow) return;
+    const gRect = graph.getBoundingClientRect();
+    if(gRect.width===0) return;
+    svg.setAttribute('width', gRect.width);
+    svg.setAttribute('height', gRect.height);
+    svg.setAttribute('viewBox', `0 0 ${gRect.width} ${gRect.height}`);
+    const poRect = poRow.getBoundingClientRect();
+    const x1 = poRect.left + poRect.width/2 - gRect.left;
+    const y1 = poRect.bottom - gRect.top;
+    let paths='';
+    card.querySelectorAll('[data-group]').forEach(g=>{
+      const people = g.querySelectorAll('[data-person]');
+      if(!people.length) return;
+      const r = g.getBoundingClientRect();
+      const x2 = r.left + r.width/2 - gRect.left;
+      const y2 = r.top - gRect.top + 4;
+      const midY = (y1+y2)/2;
+      paths += `<path d="M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}" stroke="#D8DEE7" stroke-width="1.6" fill="none"/>`;
+    });
+    svg.innerHTML = paths;
+  });
+}
+
+/* =========================================================
+   EQUIPES — inclui o buscador de profissional
+========================================================= */
+function renderTeam(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="view-head"><div><h1>Equipes</h1><p>Quadro consolidado de profissionais, papéis e carga de projetos vinculados.</p></div></div>
+  <div class="panel">
+    <div class="panel-head"><div><h3>Filtro de profissional</h3><div class="sub">Selecione um nome para ver exatamente em quais projetos ele atua</div></div></div>
+    <div class="panel-body finder-panel">
+      <div class="finder-field">
+        <label>Profissional</label>
+        <select id="teamFinder"><option value="">Selecione um profissional…</option>
+          ${ALL_NAMES.map(n=>`<option value="${n}" ${state.profissional===n?'selected':''}>${n} — ${ROSTER_BY_NAME[n].roleList.map(r=>ROLE_LABEL[r]).join(' + ')} (${ROSTER_BY_NAME[n].totalProjects} projeto(s))</option>`).join('')}
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="team-toolbar">
+    <select class="filter-select" id="teamRoleFilter"><option value="">Todos os papéis</option>${ROLES.map(r=>`<option value="${r}">${ROLE_LABEL[r]}</option>`).join('')}</select>
+    <select class="filter-select" id="teamOverFilter"><option value="">Todos os níveis de carga</option><option value="over">Apenas sobrecarregados</option></select>
+  </div>
+  <div class="panel"><div class="panel-body team-grid" id="teamGrid"></div></div>`;
+
+  injectBanner(c);
+  document.getElementById('teamFinder').addEventListener('change', e=>setProfissional(e.target.value||null));
+  document.getElementById('teamRoleFilter').addEventListener('change', renderTeamGrid);
+  document.getElementById('teamOverFilter').addEventListener('change', renderTeamGrid);
+  renderTeamGrid();
+}
+function renderTeamGrid(){
+  const roleFilter = document.getElementById('teamRoleFilter').value;
+  const overFilter = document.getElementById('teamOverFilter').value;
+  let list = [...ROSTER];
+  if(state.profissional) list = list.filter(r=>r.name===state.profissional);
+  if(roleFilter) list = list.filter(r=>r.roleList.includes(roleFilter));
+  if(overFilter==='over') list = list.filter(r=>r.overRoles.length>0);
+  list.sort((a,b)=> b.totalProjects - a.totalProjects);
+  document.getElementById('teamGrid').innerHTML = list.map(r=>{
+    const over = r.overRoles.length>0;
+    return `<div class="team-card ${over?'is-over':''}">
+      <div class="team-card-head">${avatar(r.name,r.roleList[0],38)}<div><strong>${r.name}</strong><span>${r.roleList.map(rl=>ROLE_LABEL[rl]).join(' + ')}</span></div></div>
+      ${ROLES.filter(role=>r.roles[role]).map(role=>{
+        const n = r.roles[role].size, cap=ROLE_CAP[role], pct=Math.min(100,Math.round(n/cap*100));
+        const isOver = n>cap;
+        return `<div style="margin-bottom:7px">
+          <div style="display:flex;justify-content:space-between;font-size:10.6px;color:var(--gray-600);margin-bottom:3px"><span>${ROLE_LABEL[role]}</span><span style="font-weight:700;color:${isOver?'var(--red)':'var(--gray-600)'}">${n}/${cap}</span></div>
+          <div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${pct}%;background:${isOver?'var(--red)':'var(--accent)'}"></div></div>
+        </div>`;
+      }).join('')}
+      <div class="proj-list">${[...new Set(PROJECTS.filter(p=>allPeopleOf(p).includes(r.name)).map(p=>p.nome))].map(n=>`<b>·</b> ${n}`).join('<br>')}</div>
+      <button class="btn btn-ghost btn-sm" style="width:100%;justify-content:center" onclick="setProfissional('${r.name.replace(/'/g,"\\'")}')">Ver no mapa de equipe</button>
+    </div>`;
+  }).join('') || '<p class="cell-muted">Nenhum profissional corresponde aos filtros selecionados.</p>';
+}
+
+/* =========================================================
+   PIPELINE (status dos projetos)
+========================================================= */
+const PIPELINE_COLS = ['Backlog','Levantando Requisitos','Em andamento','Pausado','Concluído'];
+function renderPipeline(){
+  const c = document.getElementById('content');
+  c.innerHTML = `
+  <div class="view-head"><div><h1>Pipeline de Projetos</h1><p>Visão das frentes organizadas por etapa do ciclo de vida — da concepção à sustentação.</p></div></div>
+  <div class="kanban-filters">
+    <select class="filter-select" id="pkTipo"><option value="">Todos os tipos</option><option>Projeto</option><option>Sustentação</option></select>
+    <select class="filter-select" id="pkCrit"><option value="">Todas as criticidades</option><option>Baixa</option><option>Média</option><option>Alta</option></select>
+  </div>
+  <div class="kanban-scroll" id="pipelineScroll"></div>`;
+  injectBanner(c);
+  document.getElementById('pkTipo').addEventListener('change', renderPipelineBoard);
+  document.getElementById('pkCrit').addEventListener('change', renderPipelineBoard);
+  renderPipelineBoard();
+}
+function renderPipelineBoard(){
+  const tipo = document.getElementById('pkTipo').value;
+  const crit = document.getElementById('pkCrit').value;
+  const data = PROJECTS.filter(p=> matchesFilters(p) && (!tipo||p.tipo===tipo) && (!crit||p.crit===crit) );
+  const el = document.getElementById('pipelineScroll');
+  el.innerHTML = PIPELINE_COLS.map(col=>{
+    const items = data.filter(p=>p.status===col);
+    return `<div class="kanban-col">
+      <div class="kanban-col-head"><span>${col}</span><span class="count">${items.length}</span></div>
+      <div class="kanban-cards">
+      ${items.map(p=>`<div class="kanban-card">
+          <div class="kc-title">${p.nome}</div>
+          <div class="kc-meta"><span>${tipoBadge(p.tipo)}</span>${critTag(p.crit)}</div>
+          <div class="kc-meta"><span>${p.poIndef?'PO a definir':'PO: '+p.po.join(', ')}</span></div>
+          <div class="kc-meta"><span>${teamSize(p)} pessoa(s) na equipe</span></div>
+        </div>`).join('') || `<div style="font-size:11px;color:var(--gray-400);padding:8px 2px">Nenhum item</div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* =========================================================
+   INDICADORES
+========================================================= */
+function renderIndicators(){
+  const c = document.getElementById('content');
+  const statusCounts = {}; PROJECTS.forEach(p=>statusCounts[p.status]=(statusCounts[p.status]||0)+1);
+  const maxStatus = Math.max(...Object.values(statusCounts));
+  const tipoCounts = {Projeto:0,Sustentação:0}; PROJECTS.forEach(p=>tipoCounts[p.tipo]++);
+  const critCounts = {Baixa:0,Média:0,Alta:0}; PROJECTS.forEach(p=>critCounts[p.crit]++);
+  const tipoColors = {Projeto:'var(--blue-600)',Sustentação:'var(--slate)'};
+  const critColors = {Baixa:'var(--gray-300)',Média:'var(--amber)',Alta:'var(--red)'};
+  const donut = (counts,colors)=>{ let acc=0; const total=Object.values(counts).reduce((a,b)=>a+b,0); const parts=[];
+    Object.keys(counts).forEach(k=>{ const pct=counts[k]/total*100; parts.push(`${colors[k]} ${acc}% ${acc+pct}%`); acc+=pct; }); return parts.join(','); };
+  const topLoad = [...ROSTER].sort((a,b)=>b.totalProjects-a.totalProjects).slice(0,8);
+  const maxLoad = Math.max(...topLoad.map(r=>r.totalProjects));
+  const overloaded = ROSTER.filter(r=>r.overRoles.length>0).length;
+
+  c.innerHTML = `
+  <div class="view-head"><div><h1>Indicadores</h1><p>Métricas agregadas calculadas a partir da base de projetos e equipe.</p></div></div>
+  <div class="ind-grid">
+    <div class="panel"><div class="panel-head"><h3>Projetos por status</h3></div>
+      <div class="panel-body bars-list">
+        ${PIPELINE_COLS.map(s=>`<div class="bars-row"><span class="lbl">${s}</span><div class="bars-track"><div class="bars-fill" style="width:${(statusCounts[s]||0)/maxStatus*100}%;background:${STATUS_COLOR[s].dot}"></div></div><span>${statusCounts[s]||0}</span></div>`).join('')}
+      </div></div>
+    <div class="panel"><div class="panel-head"><h3>Tipo de frente</h3></div>
+      <div class="panel-body donut-wrap"><div style="position:relative"><div class="donut" style="background:conic-gradient(${donut(tipoCounts,tipoColors)})"></div><div class="donut-center"><strong>${PROJECTS.length}</strong><span>frentes</span></div></div>
+        <div class="donut-legend">${Object.keys(tipoCounts).map(k=>`<span><i style="background:${tipoColors[k]}"></i>${k} — ${tipoCounts[k]}</span>`).join('')}</div>
+      </div></div>
+    <div class="panel"><div class="panel-head"><h3>Distribuição de criticidade</h3></div>
+      <div class="panel-body donut-wrap"><div style="position:relative"><div class="donut" style="background:conic-gradient(${donut(critCounts,critColors)})"></div><div class="donut-center"><strong>${PROJECTS.length}</strong><span>frentes</span></div></div>
+        <div class="donut-legend">${Object.keys(critCounts).map(k=>`<span><i style="background:${critColors[k]}"></i>${k} — ${critCounts[k]}</span>`).join('')}</div>
+      </div></div>
+    <div class="panel"><div class="panel-head"><div><h3>Carga por profissional (top 8)</h3><div class="sub">${overloaded} profissionais acima da capacidade de referência</div></div></div>
+      <div class="panel-body bars-list">
+        ${topLoad.map(r=>`<div class="bars-row"><span class="lbl">${r.name}</span><div class="bars-track"><div class="bars-fill" style="width:${r.totalProjects/maxLoad*100}%;background:${r.overRoles.length?'var(--red)':'var(--accent)'}"></div></div><span>${r.totalProjects}</span></div>`).join('')}
+      </div></div>
+  </div>`;
+}
+
+/* =========================================================
+   OBSERVAÇÕES
+========================================================= */
+function renderObservations(){
+  const c = document.getElementById('content');
+  const withObs = PROJECTS.filter(p=>p.obs);
+  const altaCrit = PROJECTS.filter(p=>p.crit==='Alta').sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  c.innerHTML = `
+  <div class="view-head"><div><h1>Observações e Pontos de Atenção</h1><p>Notas registradas na planilha de origem e watchlist de criticidade alta.</p></div></div>
+  <div class="panel">
+    <div class="panel-head"><div><h3>Observações registradas</h3><div class="sub">${withObs.length} projeto(s) com nota da equipe</div></div></div>
+    <div class="panel-body" id="obsFull"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><div><h3>Watchlist · Criticidade alta</h3><div class="sub">${altaCrit.length} projeto(s) classificados como alta criticidade</div></div></div>
+    <div class="panel-body table-wrap"><table class="data-table">
+      <thead><tr><th>Projeto</th><th>Tipo</th><th>Status</th><th>PO</th><th>Equipe</th></tr></thead>
+      <tbody>${altaCrit.map(p=>`<tr><td><strong>${p.nome}</strong></td><td>${tipoBadge(p.tipo)}</td><td>${statusTag(p.status)}</td><td>${p.poIndef?'<span class="po-indef">A definir</span>':p.po.join(', ')}</td><td class="people-count">${teamSize(p)} pessoa(s)</td></tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+  injectBanner(c);
+  document.getElementById('obsFull').innerHTML = withObs.length ? withObs.map(p=>`<div class="obs-card">
+    <div class="obs-card-head"><strong>${p.nome}</strong>${statusTag(p.status)}${critTag(p.crit)}</div>
+    <div class="obs-text">${p.obs}</div>
+  </div>`).join('') : '<p class="cell-muted">Nenhuma observação registrada.</p>';
+}
+
+/* =========================================================
+   RELATÓRIOS
+========================================================= */
+function renderReports(){
+  const c = document.getElementById('content');
+  const projOpts = [...PROJECTS].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(p=>`<option value="${p.id}">${p.nome} — ${p.tipo} · ${p.status}</option>`).join('');
+
+  c.innerHTML = `
+  <div class="view-head"><div><h1>Relatórios</h1><p>Exportações do portfólio em PDF — por profissional, por projeto individual ou relatório geral de todos os projetos.</p></div></div>
+
+  <div style="margin-bottom:16px">
+    <div class="panel" style="margin-bottom:0">
+      <div class="panel-head"><div><h3>Relatório individual por profissional</h3><div class="sub">Perfil, carga, papel e mapa de equipe em cada projeto vinculado</div></div></div>
+      <div class="panel-body" style="display:flex;flex-direction:column;gap:0">
+        <div class="finder-panel" style="border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px">
+          <div class="finder-field">
+            <label>Profissional</label>
+            <select id="reportProfissional"><option value="">Selecione um profissional…</option>
+              ${ALL_NAMES.map(n=>`<option value="${n}" ${state.profissional===n?'selected':''}>${n} — ${ROSTER_BY_NAME[n].roleList.map(r=>ROLE_LABEL[r]).join(' + ')} (${ROSTER_BY_NAME[n].totalProjects} projeto(s))</option>`).join('')}
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btnGeneratePdf" style="align-self:flex-end;white-space:nowrap">${icon('download')}Gerar PDF</button>
+        </div>
+        <div class="finder-panel">
+          <div class="finder-field">
+            <label>Projeto</label>
+            <select id="reportProject"><option value="">Selecione um projeto…</option>${projOpts}</select>
+          </div>
+          <button class="btn btn-primary" id="btnProjectPdf" style="align-self:flex-end;white-space:nowrap">${icon('download')}Gerar PDF</button>
+        </div>
+      </div>
+      <div id="profProjectsList" style="display:none;border-top:1px solid var(--border);padding:12px 18px 6px">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:.06em;margin-bottom:8px">PROJETOS VINCULADOS — PDF INDIVIDUAL DO PROJETO</div>
+        <div id="profProjectsRows"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head"><div><h3>Relatório geral de projetos</h3><div class="sub">Todos os ${PROJECTS.length} projetos — mapa de equipe, status e observações de cada frente</div></div>
+      <button class="btn btn-primary" id="btnAllProjectsPdf">${icon('download')}Gerar PDF geral</button>
+    </div>
+    <div class="panel-body" style="color:var(--gray-600);font-size:12.5px">
+      Gera um documento com uma seção por projeto contendo o mapa completo de equipe (PO, Scrum Master, Dev Back-end, Dev Front-end, QA/Tester), status, criticidade e observações registradas.
+    </div>
+  </div>
+
+  <div class="panel"><div class="placeholder-panel">
+    ${icon('settings')}
+    <h3>Em desenvolvimento</h3>
+    <p>As exportações em PDF já estão disponíveis. As etapas abaixo estão previstas para a próxima fase:</p>
+    <ul>
+      <li>Agendamento de relatórios por e-mail (semanal/mensal)</li>
+      <li>Histórico comparativo entre extrações da planilha-fonte</li>
+    </ul>
+  </div></div>`;
+
+  const STATUS_DOT_COLOR = {'Em andamento':'#0E9C95','Concluído':'#1F8A57','Pausado':'#C0392B','Backlog':'#838FA1','Levantando Requisitos':'#838FA1'};
+
+  function buildProfProjectRows(name){
+    const listEl = document.getElementById('profProjectsList');
+    const rowsEl = document.getElementById('profProjectsRows');
+    if(!name){ listEl.style.display='none'; rowsEl.innerHTML=''; return; }
+    const projs = PROJECTS.filter(p=>allPeopleOf(p).includes(name))
+      .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    if(!projs.length){ listEl.style.display='none'; return; }
+    listEl.style.display='block';
+    rowsEl.innerHTML = projs.map(p=>{
+      const roles = ROLES.filter(r=>p[r].includes(name));
+      const roleChips = roles.map(r=>`<span style="font-size:10px;font-weight:700;color:#fff;background:${{'po':'#0A1B33','sm':'#7A5AB0','back':'#2E6FB0','front':'#0E9C95','tester':'#B5790A'}[r]||'#5C6B85'};padding:2px 7px;border-radius:10px;white-space:nowrap">${ROLE_LABEL[r]}</span>`).join('');
+      const dot = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${STATUS_DOT_COLOR[p.status]||'#838FA1'};margin-right:4px;vertical-align:middle"></span>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12.5px;font-weight:600;color:var(--navy-900);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.nome}</div>
+          <div style="font-size:11px;color:var(--gray-500);margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            ${dot}${p.status} · ${p.tipo} &nbsp; ${roleChips}
+          </div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;white-space:nowrap;flex-shrink:0" data-proj-id="${p.id}">${icon('download')}PDF do projeto</button>
+      </div>`;
+    }).join('');
+    rowsEl.querySelectorAll('[data-proj-id]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const proj = PROJECTS.find(p=>p.id===parseInt(btn.dataset.projId));
+        if(proj) generateProjectsPDF([proj], `relatorio_projeto_${slug(proj.nome)}.pdf`, `Relatório de Projeto — ${proj.nome}`);
+      });
+    });
+  }
+
+  const selProf = document.getElementById('reportProfissional');
+  selProf.addEventListener('change', ()=>buildProfProjectRows(selProf.value));
+  if(selProf.value) buildProfProjectRows(selProf.value);
+
+  document.getElementById('btnGeneratePdf').addEventListener('click', ()=>{
+    const name = document.getElementById('reportProfissional').value;
+    if(!name){ toast('Selecione um profissional para gerar o relatório.'); return; }
+    generateProfessionalPDF(name);
+  });
+  document.getElementById('btnProjectPdf').addEventListener('click', ()=>{
+    const id = parseInt(document.getElementById('reportProject').value);
+    if(!id){ toast('Selecione um projeto para gerar o relatório.'); return; }
+    const proj = PROJECTS.find(p=>p.id===id);
+    if(proj) generateProjectsPDF([proj], `relatorio_projeto_${slug(proj.nome)}.pdf`, `Relatório de Projeto — ${proj.nome}`);
+  });
+  document.getElementById('btnAllProjectsPdf').addEventListener('click', ()=>{
+    const sorted = [...PROJECTS].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    generateProjectsPDF(sorted, 'relatorio_geral_projetos.pdf', 'Relatório Geral de Projetos');
+  });
+}
+
+/* =========================================================
+   PDF HELPERS — constantes e utilitários compartilhados
+========================================================= */
+const PDF_M = 42;
+const PDF_ROLE_HEX = {po:'#0A1B33',sm:'#7A5AB0',back:'#2E6FB0',front:'#0E9C95',tester:'#B5790A'};
+const PDF_STATUS_HEX = {'Backlog':'#838FA1','Levantando Requisitos':'#838FA1','Em andamento':'#0E9C95','Concluído':'#1F8A57','Pausado':'#C0392B'};
+const PDF_CRIT_HEX = {'Baixa':'#838FA1','Média':'#B5790A','Alta':'#C0392B'};
+const PDF_COL_ROLES = [['sm','Scrum Master'],['back','Dev Back-end'],['front','Dev Front-end'],['tester','QA / Tester']];
+
+function pdfHexRgb(hex){ return [parseInt(hex.slice(1,3),16),parseInt(hex.slice(3,5),16),parseInt(hex.slice(5,7),16)]; }
+
+function pdfGuard(){ if(!window.jspdf||!window.jspdf.jsPDF){toast('Biblioteca de PDF ainda carregando — tente em alguns segundos.');return false;} return true; }
+
+function pdfWriteHeader(doc, subtitle){
+  const W=doc.internal.pageSize.getWidth(), M=PDF_M;
+  doc.setFillColor(10,27,51); doc.rect(0,0,W,80,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Saúde Digital - SISD',M,32);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(subtitle,M,50);
+  doc.setFontSize(8.5); doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`,W-M,50,{align:'right'});
+}
+
+function pdfWriteFooters(doc){
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight(), M=PDF_M;
+  const tot=doc.internal.getNumberOfPages();
+  for(let i=1;i<=tot;i++){
+    doc.setPage(i);
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,158,172);
+    doc.text(`Saúde Digital - SISD — página ${i} de ${tot}`,M,H-22);
+  }
+}
+
+/* Renderiza um cartão de projeto no PDF.
+   highlightName: quando fornecido, destaca esse nome nas colunas e mostra "PERFIL" no rótulo PO.
+   Retorna o novo y após o cartão. */
+function pdfProjectCard(doc, p, y, highlightName=null){
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight();
+  const M=PDF_M, CW=W-M*2, FS=8.5, LH=13;
+
+  function ensureSpace(h){ if(y+h>H-48){doc.addPage();y=48;} }
+
+  /* Pré-calcular alturas das colunas */
+  const colW4=(CW-24)/4;
+  const getColLines=key=>{
+    const ppl=p[key]; if(!ppl.length) return 1;
+    return ppl.reduce((s,n)=>s+doc.splitTextToSize(n+(n===highlightName?' *':''),colW4-10).length,0);
+  };
+  const maxColLines=Math.max(...PDF_COL_ROLES.map(([k])=>getColLines(k)));
+
+  /* Pré-calcular linhas de observação */
+  const obsLines=p.obs?doc.splitTextToSize(p.obs,CW-22):[];
+
+  /* Papel(éis) do profissional destacado neste projeto */
+  const hlRoles=highlightName ? ROLES.filter(r=>p[r].includes(highlightName)) : [];
+
+  const roleBarH = hlRoles.length ? 20 : 0;
+  const obsH     = obsLines.length ? obsLines.length*LH+14 : 0;
+  const cardH    = 32 + roleBarH + obsH + 56 + 20 + maxColLines*LH + 22;
+
+  ensureSpace(cardH);
+
+  /* Borda do cartão */
+  doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.setLineWidth(0.6);
+  doc.roundedRect(M,y,CW,cardH,6,6,'FD');
+
+  /* Cabeçalho navy */
+  doc.setFillColor(10,27,51);
+  doc.roundedRect(M,y,CW,32,6,6,'F');
+  doc.rect(M,y+22,CW,10,'F');
+  doc.setDrawColor(226,231,238); doc.setLineWidth(0.4);
+  doc.line(M,y+32,M+CW,y+32);
+
+  /* Nome do projeto */
+  const nomeFit=doc.splitTextToSize(p.nome,CW*0.55)[0];
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.setTextColor(255,255,255);
+  doc.text(nomeFit,M+10,y+21);
+
+  /* Chips à direita (tipo, status, crit) */
+  let chipRX=M+CW-8;
+  [[p.tipo,p.tipo==='Projeto'?'#2E6FB0':'#5C6B85'],
+   [p.status,PDF_STATUS_HEX[p.status]||'#838FA1'],
+   [p.crit,PDF_CRIT_HEX[p.crit]||'#838FA1']].reverse().forEach(([txt,hex])=>{
+    doc.setFontSize(7);
+    const cw=doc.getTextWidth(txt)+10;
+    const [r,g,b]=pdfHexRgb(hex);
+    doc.setFillColor(r,g,b); doc.roundedRect(chipRX-cw,y+10,cw,13,3,3,'F');
+    doc.setTextColor(255,255,255); // reset explícito após fill colorido
+    doc.text(txt,chipRX-cw/2,y+18.5,{align:'center'});
+    chipRX-=cw+4;
+  });
+
+  let cY=y+40;
+
+  /* Barra de papel(éis) do profissional destacado */
+  if(hlRoles.length){
+    doc.setFillColor(232,240,250); doc.rect(M,cY,CW,roleBarH,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
+    doc.setTextColor(66,80,106);
+    doc.text('Papel neste projeto:',M+8,cY+13);
+    let rx=M+8+doc.getTextWidth('Papel neste projeto:')+8;
+    hlRoles.forEach(role=>{
+      const lbl=ROLE_LABEL[role];
+      const [cr,cg,cb]=pdfHexRgb(PDF_ROLE_HEX[role]||'#5C6B85');
+      const rw=doc.getTextWidth(lbl)+10;
+      doc.setFillColor(cr,cg,cb); doc.roundedRect(rx,cY+3,rw,12,3,3,'F');
+      doc.setTextColor(255,255,255); // reset
+      doc.setFontSize(7.5); doc.text(lbl,rx+5,cY+11);
+      rx+=rw+5;
+    });
+    cY+=roleBarH;
+  }
+
+  /* Observação */
+  if(obsLines.length){
+    doc.setFillColor(253,241,220); doc.setDrawColor(181,121,10); doc.setLineWidth(0.5);
+    doc.rect(M+8,cY,3,obsH-4,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(66,80,106);
+    doc.text('Observação',M+16,cY+9);
+    cY+=10;
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(15,23,38);
+    obsLines.forEach(line=>{ doc.text(line,M+16,cY+9); cY+=LH; });
+    cY+=5;
+  }
+
+  /* Cartão PO — avatar + nome + badge de papel */
+  const poNames=p.poIndef?['A definir']:p.po;
+  const isPO=!p.poIndef&&highlightName&&p.po.includes(highlightName);
+  const poCardW=Math.min(CW-40, 320);
+  const poCardX=M+(CW-poCardW)/2;
+  const poCardH=46;
+
+  /* fundo do cartão */
+  if(p.poIndef){
+    doc.setFillColor(253,247,232); doc.setDrawColor(225,186,100);
+  } else {
+    doc.setFillColor(240,244,249); doc.setDrawColor(200,212,228);
+  }
+  doc.setLineWidth(0.5);
+  doc.roundedRect(poCardX,cY,poCardW,poCardH,6,6,'FD');
+
+  /* borda esquerda colorida */
+  if(p.poIndef){ doc.setFillColor(181,121,10); }
+  else          { doc.setFillColor(10,27,51); }
+  doc.rect(poCardX,cY,3,poCardH,'F');
+  /* arredonda visualmente a ponta esquerda */
+  doc.roundedRect(poCardX,cY,6,poCardH,3,3,'F');
+
+  /* círculo avatar */
+  const avR=14, avCX=poCardX+22, avCY=cY+poCardH/2;
+  if(p.poIndef){ doc.setFillColor(181,121,10); }
+  else          { doc.setFillColor(10,27,51); }
+  doc.circle(avCX,avCY,avR,'F');
+
+  /* iniciais dentro do círculo */
+  doc.setTextColor(255,255,255);
+  doc.setFont('helvetica','bold'); doc.setFontSize(8);
+  const poInitials = p.poIndef ? '?' : initials(poNames[0]);
+  doc.text(poInitials, avCX, avCY+3, {align:'center'});
+
+  /* label "PRODUCT OWNER" acima do nome */
+  const txtX = poCardX+42;
+  const labelColor = p.poIndef ? [181,121,10] : [98,112,138];
+  doc.setTextColor(...labelColor);
+  doc.setFont('helvetica','bold'); doc.setFontSize(6.5);
+  doc.text('PRODUCT OWNER'+(isPO?' · PERFIL':''), txtX, cY+13);
+
+  /* nome(s) do PO */
+  const poDisplayText = poNames.join(', ');
+  const maxNameW = poCardW - 50;
+  const nameLines = doc.splitTextToSize(poDisplayText, maxNameW);
+  if(p.poIndef){ doc.setTextColor(181,121,10); }
+  else          { doc.setTextColor(15,23,38); }
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text(nameLines[0], txtX, cY+27);
+
+  /* se mais de um PO, segunda linha menor */
+  if(poNames.length>1){
+    doc.setFontSize(8); doc.setFont('helvetica','normal');
+    doc.setTextColor(98,112,138);
+    doc.text(poNames.slice(1).join(', '), txtX, cY+38);
+  }
+
+  /* badge de papel no canto direito */
+  const badgeLbl = p.poIndef ? 'A definir' : 'Product Owner';
+  doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+  const bdgW = doc.getTextWidth(badgeLbl)+10;
+  const bdgX = poCardX+poCardW-bdgW-8;
+  const bdgY = cY+poCardH/2-7;
+  if(p.poIndef){ doc.setFillColor(225,186,100); doc.setTextColor(90,55,0); }
+  else          { doc.setFillColor(10,27,51);   doc.setTextColor(255,255,255); }
+  doc.roundedRect(bdgX,bdgY,bdgW,13,3,3,'F');
+  doc.text(badgeLbl, bdgX+5, bdgY+8.5);
+
+  cY+=poCardH+10;
+
+  /* Conector visual */
+  const connX=M+CW/2;
+  doc.setDrawColor(215,222,231); doc.setLineWidth(0.7);
+  doc.line(connX,cY,connX,cY+8);
+  doc.line(M+12,cY+8,M+CW-12,cY+8);
+  [0,1,2,3].forEach(i=>{ const cx2=M+12+colW4*(i+0.5); doc.line(cx2,cY+8,cx2,cY+14); });
+  cY+=20;
+
+  /* Labels das colunas */
+  PDF_COL_ROLES.forEach(([key,label],i)=>{
+    const colX=M+12+i*colW4;
+    const [r,g,b]=pdfHexRgb(PDF_ROLE_HEX[key]||'#838FA1');
+    doc.setFillColor(r,g,b); doc.circle(colX+5,cY-1,3,'F');
+    doc.setTextColor(r,g,b); // reset após fill
+    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.text(label,colX+11,cY+2);
+  });
+  cY+=12;
+
+  /* Conteúdo das colunas */
+  PDF_COL_ROLES.forEach(([key],i)=>{
+    const colX=M+12+i*colW4;
+    const ppl=p[key]; let colY=cY;
+    if(!ppl.length){
+      doc.setTextColor(181,189,201); doc.setFont('helvetica','italic'); doc.setFontSize(8);
+      doc.text('—',colX+2,colY+8);
+    } else {
+      ppl.forEach(n=>{
+        const isThis=highlightName&&n===highlightName;
+        const txt=n+(isThis?' *':'');
+        const lines=doc.splitTextToSize(txt,colW4-10);
+        if(isThis){ const [r,g,b]=pdfHexRgb(PDF_ROLE_HEX[key]); doc.setTextColor(r,g,b); doc.setFont('helvetica','bold'); }
+        else { doc.setTextColor(15,23,38); doc.setFont('helvetica','normal'); } // reset
+        doc.setFontSize(FS);
+        lines.forEach(line=>{ doc.text(line,colX+2,colY+8); colY+=LH; });
+      });
+    }
+  });
+
+  return y+cardH+12;
+}
+
+/* =========================================================
+   PDF — Relatório de projeto(s) (individual e geral)
+========================================================= */
+function generateProjectsPDF(list, filename, subtitle){
+  if(!pdfGuard()) return;
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight();
+  const M=PDF_M, CW=W-M*2;
+  let y=0;
+
+  function ensureSpace(h){ if(y+h>H-48){doc.addPage();y=48;} }
+
+  pdfWriteHeader(doc, subtitle);
+  y=100;
+
+  /* ---- Quantitativo de profissionais (apenas no relatório geral) ---- */
+  if(list.length > 1){
+    /* calcula métricas a partir dos projetos do relatório */
+    const allNames = new Set();
+    list.forEach(p=>allPeopleOf(p).forEach(n=>allNames.add(n)));
+    const totalProfs = allNames.size;
+
+    const roleCount = {};
+    ROLES.forEach(r=>roleCount[r]=new Set());
+    list.forEach(p=>{ ROLES.forEach(r=>{ p[r].forEach(n=>roleCount[r].add(n)); }); });
+
+    const overloaded = ROSTER.filter(r=>r.overRoles.length>0);
+    const poIndef = list.filter(p=>p.poIndef).length;
+    const byStatus = {};
+    list.forEach(p=>{ byStatus[p.status]=(byStatus[p.status]||0)+1; });
+
+    /* painel de resumo — altura dinâmica */
+    const hasAlerts = overloaded.length > 0 || poIndef > 0;
+    const summaryH = hasAlerts ? 160 : 136;
+    ensureSpace(summaryH+16);
+
+    /* fundo do painel */
+    doc.setFillColor(247,249,251); doc.setDrawColor(226,231,238); doc.setLineWidth(0.5);
+    doc.roundedRect(M,y,CW,summaryH,6,6,'FD');
+
+    /* borda esquerda navy */
+    doc.setFillColor(10,27,51);
+    doc.roundedRect(M,y,4,summaryH,2,2,'F');
+
+    /* título */
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(10,27,51);
+    doc.text('Quantitativo de profissionais', M+16, y+18);
+    doc.setDrawColor(226,231,238); doc.setLineWidth(0.4);
+    doc.line(M,y+26,M+CW,y+26);
+
+    /* ── Linha 1: KPI por papel ── */
+    const kpis=[
+      {label:'Total',           sub:'profissionais',  val:totalProfs,              color:'#0A1B33'},
+      {label:'Product Owners',  sub:'',               val:roleCount['po'].size,    color:'#0A1B33'},
+      {label:'Scrum Masters',   sub:'',               val:roleCount['sm'].size,    color:'#7A5AB0'},
+      {label:'Dev Back-end',    sub:'',               val:roleCount['back'].size,  color:'#2E6FB0'},
+      {label:'Dev Front-end',   sub:'',               val:roleCount['front'].size, color:'#0E9C95'},
+      {label:'QA / Tester',     sub:'',               val:roleCount['tester'].size,color:'#B5790A'},
+    ];
+    const kpiW=(CW-28)/6, kpiY=y+34;
+    kpis.forEach((k,i)=>{
+      const kx=M+14+i*kpiW;
+      const [kr,kg,kb]=pdfHexRgb(k.color);
+      doc.setFont('helvetica','bold'); doc.setFontSize(20); doc.setTextColor(kr,kg,kb);
+      doc.text(String(k.val), kx+kpiW/2, kpiY+20, {align:'center'});
+      doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(kr,kg,kb);
+      doc.text(k.label, kx+kpiW/2, kpiY+30, {align:'center'});
+      if(k.sub){
+        doc.setFont('helvetica','normal'); doc.setFontSize(6.5); doc.setTextColor(150,160,175);
+        doc.text(k.sub, kx+kpiW/2, kpiY+39, {align:'center'});
+      }
+      if(i<kpis.length-1){
+        doc.setDrawColor(226,231,238); doc.setLineWidth(0.4);
+        doc.line(kx+kpiW, kpiY+4, kx+kpiW, kpiY+44);
+      }
+    });
+
+    /* ── Linha 2: status dos projetos ── */
+    const row2Y=y+88;
+    doc.setDrawColor(226,231,238); doc.setLineWidth(0.4);
+    doc.line(M,row2Y,M+CW,row2Y);
+
+    let sx=M+16;
+    doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(98,112,138);
+    doc.text('Status dos projetos:', sx, row2Y+13);
+    sx+=86;
+
+    const statusOrder=['Em andamento','Levantando Requisitos','Backlog','Concluído','Pausado'];
+    statusOrder.forEach(st=>{
+      const cnt=byStatus[st]||0; if(!cnt) return;
+      const [sr,sg,sb]=pdfHexRgb(PDF_STATUS_HEX[st]||'#838FA1');
+      doc.setFontSize(7); doc.setFont('helvetica','bold');
+      const lbl=`${st}  ${cnt}`;
+      const pw=doc.getTextWidth(lbl)+12;
+      /* fundo translúcido — fill leve */
+      doc.setFillColor(sr,sg,sb); doc.setGState(new doc.GState({opacity:0.15}));
+      doc.roundedRect(sx,row2Y+4,pw,14,3,3,'F');
+      doc.setGState(new doc.GState({opacity:1}));
+      /* dot colorido */
+      doc.setFillColor(sr,sg,sb); doc.circle(sx+6,row2Y+11,3,'F');
+      /* texto escuro legível */
+      doc.setTextColor(30,40,55); doc.text(lbl.trim(), sx+12, row2Y+13.5);
+      sx+=pw+6;
+    });
+
+    /* ── Linha 3: alertas (se houver) ── */
+    if(hasAlerts){
+      const row3Y=y+118;
+      doc.setDrawColor(226,231,238); doc.setLineWidth(0.4);
+      doc.line(M,row3Y,M+CW,row3Y);
+
+      let ax=M+16;
+      if(overloaded.length){
+        const [r,g,b]=pdfHexRgb('#C0392B');
+        doc.setFillColor(r,g,b); doc.setGState(new doc.GState({opacity:0.1}));
+        const aw=doc.getTextWidth(`⚠ ${overloaded.length} profissional(is) com sobrecarga`)+16;
+        doc.roundedRect(ax,row3Y+4,aw,14,3,3,'F');
+        doc.setGState(new doc.GState({opacity:1}));
+        doc.setFillColor(r,g,b); doc.circle(ax+6,row3Y+11,3,'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(r,g,b);
+        doc.text(`${overloaded.length} profissional(is) com sobrecarga de alocação`, ax+12, row3Y+13.5);
+        ax+=aw+10;
+      }
+      if(poIndef){
+        const [r,g,b]=pdfHexRgb('#B5790A');
+        doc.setFillColor(r,g,b); doc.setGState(new doc.GState({opacity:0.1}));
+        const aw2=doc.getTextWidth(`${poIndef} projeto(s) sem PO definido`)+16;
+        doc.roundedRect(ax,row3Y+4,aw2,14,3,3,'F');
+        doc.setGState(new doc.GState({opacity:1}));
+        doc.setFillColor(r,g,b); doc.circle(ax+6,row3Y+11,3,'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(7); doc.setTextColor(r,g,b);
+        doc.text(`${poIndef} projeto(s) sem PO definido`, ax+12, row3Y+13.5);
+      }
+    }
+
+    y+=summaryH+20;
+
+    /* título da seção de mapas */
+    ensureSpace(20);
+    doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(15,23,38);
+    doc.text('Mapa de equipes por projeto', M, y);
+    y+=18;
+  }
+
+  list.forEach(p=>{ y=pdfProjectCard(doc,p,y,null); });
+  pdfWriteFooters(doc);
+  doc.save(filename);
+  toast(`PDF "${filename}" gerado — ${list.length} projeto(s).`);
+}
+
+/* =========================================================
+   PDF — Relatório por profissional
+========================================================= */
+function generateProfessionalPDF(name){
+  if(!pdfGuard()) return;
+  const r=ROSTER_BY_NAME[name];
+  if(!r){ toast('Profissional não encontrado.'); return; }
+  const projs=PROJECTS.filter(p=>allPeopleOf(p).includes(name)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight();
+  const M=PDF_M, CW=W-M*2;
+  let y=0;
+
+  function ensureSpace(h){ if(y+h>H-48){doc.addPage();y=48;} }
+
+  /* ---- Bloco 1: cabeçalho ---- */
+  pdfWriteHeader(doc,'Relatório individual de profissional');
+  y=100;
+
+  /* ---- Bloco 2: perfil ---- */
+  ensureSpace(80);
+  doc.setFillColor(247,249,251); doc.setDrawColor(226,231,238); doc.setLineWidth(0.5);
+  doc.roundedRect(M,y,CW,72,6,6,'FD');
+
+  const mainRole=r.roleList[0];
+  const [ar,ag,ab]=pdfHexRgb(PDF_ROLE_HEX[mainRole]||'#5C6B85');
+  doc.setFillColor(ar,ag,ab); doc.circle(M+26,y+36,20,'F');
+  doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  doc.text(initials(name),M+26,y+40,{align:'center'});
+
+  doc.setTextColor(15,23,38); doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(name,M+54,y+24);
+
+  let chipX=M+54;
+  const chipBY=y+38;
+  r.roleList.forEach(role=>{
+    const [cr,cg,cb]=pdfHexRgb(PDF_ROLE_HEX[role]||'#5C6B85');
+    doc.setFontSize(7.5);
+    const lbl=ROLE_LABEL[role], cw=doc.getTextWidth(lbl)+10;
+    doc.setFillColor(cr,cg,cb); doc.roundedRect(chipX,chipBY-8,cw,13,3,3,'F');
+    doc.setTextColor(255,255,255); doc.text(lbl,chipX+5,chipBY+1); // reset após fill
+    chipX+=cw+5;
+  });
+  doc.setTextColor(98,112,138); doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(`Atua em ${projs.length} projeto(s)`,W-M-8,y+24,{align:'right'});
+  y+=86;
+
+  /* ---- Bloco 3: carga de trabalho ---- */
+  const barH=28+r.roleList.length*22+10;
+  ensureSpace(barH);
+  doc.setFillColor(255,255,255); doc.setDrawColor(226,231,238); doc.setLineWidth(0.5);
+  doc.roundedRect(M,y,CW,barH,6,6,'FD');
+  doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(15,23,38);
+  doc.text('Carga de trabalho',M+10,y+16);
+  y+=26;
+
+  r.roleList.forEach(role=>{
+    const n=r.roles[role].size, cap=ROLE_CAP[role], over=n>cap, pct=Math.min(1,n/cap);
+    const [cr,cg,cb]=over?[192,57,43]:pdfHexRgb(PDF_ROLE_HEX[role]||'#0E9C95');
+    const lblW=115, barX=M+10+lblW, barW=CW-lblW-68;
+    doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(15,23,38);
+    doc.text(ROLE_LABEL[role],M+10,y+7);
+    doc.setFillColor(226,231,238); doc.roundedRect(barX,y-1,barW,9,2,2,'F');
+    doc.setFillColor(cr,cg,cb); if(pct>0) doc.roundedRect(barX,y-1,barW*pct,9,2,2,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8);
+    doc.setTextColor(over?192:66,over?57:80,over?43:106);
+    doc.text(`${n}/${cap} proj.`,barX+barW+5,y+7);
+    y+=20;
+  });
+  y+=18;
+
+  /* ---- Bloco 4: cartões por projeto (papel + obs + mapa) ---- */
+  ensureSpace(20);
+  doc.setFont('helvetica','bold'); doc.setFontSize(11.5); doc.setTextColor(15,23,38);
+  doc.text('Projetos vinculados — mapa de equipe',M,y);
+  y+=20;
+
+  projs.forEach(p=>{ y=pdfProjectCard(doc,p,y,name); });
+
+  pdfWriteFooters(doc);
+  doc.save(`relatorio_${slug(name)}.pdf`);
+  toast(`PDF de ${name} gerado com sucesso.`);
+}
+
+/* =========================================================
+   PLACEHOLDER
+========================================================= */
+function renderPlaceholder(title, items, showExportHint){
+  const c = document.getElementById('content');
+  c.innerHTML = `<div class="view-head"><div><h1>${title}</h1></div></div>
+  <div class="panel"><div class="placeholder-panel">
+    ${icon('settings')}
+    <h3>Em desenvolvimento</h3>
+    <p>${showExportHint?'A exportação básica em CSV já está disponível no botão "Exportar" do topo. As etapas abaixo estão previstas para a próxima fase:':'Esta etapa está prevista na próxima fase do roadmap do produto:'}</p>
+    <ul>${items.map(i=>`<li>${i}</li>`).join('')}</ul>
+  </div></div>`;
+}
+
+/* =========================================================
+   NOVO PROJETO (modal)
+========================================================= */
+function openNewProjectModal(){
+  document.getElementById('modalBody').innerHTML = `
+   <div class="form-field"><label>Nome do projeto</label><input id="npName" placeholder="Ex.: Sistema de Telemonitoramento"></div>
+   <div class="form-field"><label>Tipo</label><select id="npTipo"><option>Projeto</option><option>Sustentação</option></select></div>
+   <div class="form-field"><label>Status inicial</label><select id="npStatus">${PIPELINE_COLS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+   <div class="form-field"><label>Criticidade</label><select id="npCrit"><option>Baixa</option><option>Média</option><option>Alta</option></select></div>
+   <div class="form-field"><label>Product Owner</label><input id="npPO" placeholder="Nome do PO (ou deixe em branco para 'A definir')"></div>`;
+  document.getElementById('modalBg').classList.add('active');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('active'); }
+document.addEventListener('DOMContentLoaded', ()=>{
+  renderShell();
+  setView('overview');
+  document.getElementById('modalSave').addEventListener('click', ()=>{
+    const nome = document.getElementById('npName').value.trim();
+    if(!nome){ toast('Informe o nome do projeto.'); return; }
+    const id = Math.max(...PROJECTS.map(p=>p.id))+1;
+    const poVal = document.getElementById('npPO').value.trim();
+    PROJECTS.push({id, nome, tipo:document.getElementById('npTipo').value, status:document.getElementById('npStatus').value,
+      crit:document.getElementById('npCrit').value, po:poVal?[poVal]:[], poIndef:!poVal,
+      sm:[], back:[], front:[], tester:[], obs:''});
+    closeModal();
+    toast('Projeto criado com sucesso.');
+    setView(currentView);
+  });
+});
+</script>
+</body>
+</html>
