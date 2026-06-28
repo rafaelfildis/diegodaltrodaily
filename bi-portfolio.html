@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -53,6 +53,7 @@ input,select{font-family:inherit;}
 .sidebar-brand{display:flex;align-items:center;gap:11px;padding:24px 20px 18px;border-bottom:1px solid rgba(255,255,255,.08);}
 .brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--blue-600));display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 10px rgba(14,156,149,.35);}
 .brand-mark svg{width:19px;height:19px;stroke:#fff;}
+.brand-logo{width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#fff;padding:3px;box-shadow:0 0 0 2px rgba(255,255,255,0.25);}
 .brand-text{display:flex;flex-direction:column;line-height:1.22;}
 .brand-text strong{color:#fff;font-size:14.8px;font-weight:700;letter-spacing:-.01em;}
 .brand-text span{color:#7E8DA6;font-size:11px;}
@@ -509,7 +510,7 @@ function renderShell(){
   app.innerHTML = `
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
-      <div class="brand-mark">${icon('map')}</div>
+      <img src="sisd-logo-nobg.png" class="brand-logo" alt="SISD">
       <div class="brand-text"><strong>Saúde Digital - SISD</strong><span>Gestão</span></div>
     </div>
     <nav class="sidebar-nav" id="sidebarNav">
@@ -1238,6 +1239,7 @@ function renderReports(){
 /* =========================================================
    PDF HELPERS — constantes e utilitários compartilhados
 ========================================================= */
+let SISD_LOGO_B64 = null; (async()=>{ try{ const r=await fetch("sisd-logo-nobg.png"); const buf=await r.arrayBuffer(); const b64=btoa(String.fromCharCode(...new Uint8Array(buf))); SISD_LOGO_B64="data:image/png;base64,"+b64; }catch(e){} })();
 const PDF_M = 42;
 const PDF_ROLE_HEX = {po:'#0A1B33',sm:'#7A5AB0',back:'#2E6FB0',front:'#0E9C95',tester:'#B5790A'};
 const PDF_STATUS_HEX = {'Backlog':'#838FA1','Levantando Requisitos':'#838FA1','Em andamento':'#0E9C95','Concluído':'#1F8A57','Pausado':'#C0392B'};
@@ -1251,9 +1253,12 @@ function pdfGuard(){ if(!window.jspdf||!window.jspdf.jsPDF){toast('Biblioteca de
 function pdfWriteHeader(doc, subtitle){
   const W=doc.internal.pageSize.getWidth(), M=PDF_M;
   doc.setFillColor(10,27,51); doc.rect(0,0,W,80,'F');
+  /* logo */
+  try{ doc.addImage(SISD_LOGO_B64,'PNG',M,8,52,52); }catch(e){}
+  /* textos deslocados para direita da logo */
   doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Saúde Digital - SISD',M,32);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(subtitle,M,50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Saúde Digital - SISD',M+60,32);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(subtitle,M+60,50);
   doc.setFontSize(8.5); doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`,W-M,50,{align:'right'});
 }
 
