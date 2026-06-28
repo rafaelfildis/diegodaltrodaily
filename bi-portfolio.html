@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Saúde Digital - SISD · Gestão</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root{
   --navy-900:#0A1B33;
@@ -98,6 +99,11 @@ input,select{font-family:inherit;}
 .view-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:18px;gap:14px;flex-wrap:wrap;border-left:3px solid var(--accent);padding-left:12px;}
 .view-head h1{font-size:21px;color:var(--navy-900);}
 .view-head p{margin:4px 0 0;color:var(--gray-600);font-size:13px;}
+.view-export-btn{display:inline-flex;align-items:center;gap:7px;background:var(--navy-900);color:#fff;border:1px solid var(--navy-700);border-radius:9px;padding:9px 13px;font-size:12.4px;font-weight:700;box-shadow:0 5px 14px rgba(10,27,51,.18);transition:transform .15s,background .15s,box-shadow .15s;white-space:nowrap;}
+.view-export-btn:hover{background:var(--navy-800);transform:translateY(-1px);box-shadow:0 8px 18px rgba(10,27,51,.22);}
+.view-export-btn svg{width:15px;height:15px;stroke:#fff;stroke-width:1.9;}
+.view-export-btn.is-loading{opacity:.72;pointer-events:none;transform:none;}
+@media(max-width:720px){.view-head{align-items:flex-start}.view-export-btn{width:100%;justify-content:center;}}
 
 /* Active professional banner */
 .prof-banner{background:linear-gradient(135deg,var(--navy-900),var(--navy-700));border-radius:var(--radius-md);padding:14px 18px;margin-bottom:18px;color:#fff;display:flex;align-items:flex-start;gap:14px;box-shadow:var(--shadow-md);}
@@ -584,15 +590,90 @@ function setView(id){
     reports:renderReports,
     settings:()=>renderPlaceholder('Configurações',['Controle de permissões por perfil (gestor, PO, dev, QA)','Conexão direta à planilha/base de origem (atualização automática)','Personalização de campos, papéis e limites de capacidade'])};
   (renderers[id]||renderOverview)();
+  injectViewExportButton();
 }
 function refreshFilteredViews(){
   const renderers = {overview:renderOverview,projects:renderProjects,pipeline:renderPipeline,team:renderTeam,indicators:renderIndicators,observations:renderObservations};
-  if(renderers[currentView]) renderers[currentView]();
+  if(renderers[currentView]){ renderers[currentView](); injectViewExportButton(); }
 }
 
 /* =========================================================
    BANNER — profissional selecionado (aparece em todas as views relevantes)
 ========================================================= */
+function injectViewExportButton(){
+  const head = document.querySelector('#content .view-head');
+  if(!head || head.querySelector('.view-export-btn')) return;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'view-export-btn no-screen-pdf';
+  btn.innerHTML = `${icon('download')}Exportar tela em PDF`;
+  btn.addEventListener('click', exportCurrentViewPDF);
+  head.appendChild(btn);
+}
+
+async function exportCurrentViewPDF(){
+  if(!window.jspdf || !window.jspdf.jsPDF){ toast('Biblioteca de PDF ainda carregando — tente em alguns segundos.'); return; }
+  if(!window.html2canvas){ toast('Biblioteca de captura ainda carregando — tente em alguns segundos.'); return; }
+  const content = document.getElementById('content');
+  const btn = document.querySelector('.view-export-btn');
+  const title = document.querySelector('#content .view-head h1')?.textContent?.trim() || 'dashboard';
+  if(!content) return;
+  try{
+    if(btn){ btn.classList.add('is-loading'); btn.innerHTML = `${icon('download')}Gerando PDF...`; }
+    document.querySelectorAll('.no-screen-pdf').forEach(el=>el.style.visibility='hidden');
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const canvas = await html2canvas(content, {
+      backgroundColor: '#F7F9FB',
+      scale: Math.min(3, Math.max(2, window.devicePixelRatio || 2)),
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      windowWidth: Math.max(document.documentElement.scrollWidth, content.scrollWidth),
+      windowHeight: Math.max(content.scrollHeight, document.documentElement.clientHeight)
+    });
+    document.querySelectorAll('.no-screen-pdf').forEach(el=>el.style.visibility='');
+
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
+    const margin = 22;
+    const footerH = 16;
+    const imgW = pageW - margin*2;
+    const usableH = pageH - margin*2 - footerH;
+    const sourcePageH = Math.floor(usableH * canvas.width / imgW);
+    const pageCanvas = document.createElement('canvas');
+    const pageCtx = pageCanvas.getContext('2d');
+    pageCanvas.width = canvas.width;
+
+    const pages = [];
+    for(let sourceY=0; sourceY<canvas.height; sourceY+=sourcePageH){
+      const sliceH = Math.min(sourcePageH, canvas.height-sourceY);
+      pageCanvas.height = sliceH;
+      pageCtx.fillStyle = '#F7F9FB';
+      pageCtx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
+      pageCtx.drawImage(canvas,0,sourceY,canvas.width,sliceH,0,0,canvas.width,sliceH);
+      pages.push({data:pageCanvas.toDataURL('image/png',1), height:sliceH * imgW / canvas.width});
+    }
+
+    pages.forEach((page,idx)=>{
+      if(idx>0) pdf.addPage();
+      pdf.addImage(page.data,'PNG',margin,margin,imgW,page.height,undefined,'MEDIUM');
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(120,130,145);
+      pdf.text(`Saúde Digital - SISD — ${title} — página ${idx+1} de ${pages.length}`, margin, pageH-10);
+    });
+    pdf.save(`dashboard_${slug(title)}.pdf`);
+    toast(`PDF da tela "${title}" gerado com sucesso.`);
+  }catch(err){
+    document.querySelectorAll('.no-screen-pdf').forEach(el=>el.style.visibility='');
+    console.error(err);
+    toast('Não foi possível gerar o PDF da tela atual.');
+  }finally{
+    if(btn){ btn.classList.remove('is-loading'); btn.innerHTML = `${icon('download')}Exportar tela em PDF`; }
+  }
+}
 function professionalBannerHTML(){
   if(!state.profissional) return '';
   const name = state.profissional;
@@ -1157,6 +1238,7 @@ function renderReports(){
           <button class="btn btn-primary" id="btnProjectPdf" style="align-self:flex-end;white-space:nowrap">${icon('download')}Gerar PDF</button>
         </div>
       </div>
+      <div id="projectPreview" style="display:none;border-top:1px solid var(--border);padding:12px 18px 14px"></div>
       <div id="profProjectsList" style="display:none;border-top:1px solid var(--border);padding:12px 18px 6px">
         <div style="font-size:11px;font-weight:700;color:var(--gray-500);letter-spacing:.06em;margin-bottom:8px">PROJETOS VINCULADOS — PDF INDIVIDUAL DO PROJETO</div>
         <div id="profProjectsRows"></div>
@@ -1215,9 +1297,51 @@ function renderReports(){
     });
   }
 
+  function buildProjectPreview(id){
+    const wrap = document.getElementById('projectPreview');
+    const projId = parseInt(id);
+    const p = PROJECTS.find(item=>item.id===projId);
+    if(!p){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+    const personChip = (name,role)=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--gray-200);border-radius:14px;padding:4px 8px;font-size:11px;font-weight:600;color:var(--ink)">${avatar(name,role,20)}${name}</span>`;
+    const roleColumn = (role,label)=>`<div style="background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:10px;min-height:88px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;color:${avatarColor(role)};letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">
+        <span style="width:7px;height:7px;border-radius:50%;background:${avatarColor(role)};display:inline-block"></span>${label}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">${p[role].length?p[role].map(n=>personChip(n,role)).join(''):'<span style="font-size:11px;color:var(--gray-500);font-style:italic">Não atribuído</span>'}</div>
+    </div>`;
+    const poHtml = p.poIndef ? `<span class="po-indef">A definir</span>` : p.po.map(n=>personChip(n,'po')).join('');
+    wrap.style.display='block';
+    wrap.innerHTML = `<div style="font-size:11px;font-weight:800;color:var(--gray-500);letter-spacing:.06em;margin-bottom:10px;text-transform:uppercase">Prévia do projeto selecionado</div>
+      <div style="border:1px solid var(--gray-200);border-radius:12px;background:var(--gray-50);overflow:hidden">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:13px 14px;background:#fff;border-bottom:1px solid var(--gray-200)">
+          <div style="min-width:0">
+            <div style="font-size:15px;font-weight:800;color:var(--navy-900);margin-bottom:6px">${p.nome}</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">${tipoBadge(p.tipo)}${statusTag(p.status)}${critTag(p.crit)}<span style="font-size:10.5px;font-weight:700;color:var(--gray-600);background:var(--gray-100);border-radius:12px;padding:3px 8px">${teamSize(p)} pessoa(s)</span></div>
+          </div>
+          <button class="btn btn-primary" id="btnProjectPreviewPdf" style="font-size:11px;padding:7px 11px;white-space:nowrap">${icon('download')}PDF do projeto</button>
+        </div>
+        <div style="padding:13px 14px">
+          <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:12px;flex-wrap:wrap">
+            <span style="font-size:10px;font-weight:800;color:var(--gray-500);letter-spacing:.05em;text-transform:uppercase">Product Owner</span>${poHtml}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">
+            ${roleColumn('sm','Scrum Master')}
+            ${roleColumn('back','Dev Back-end')}
+            ${roleColumn('front','Dev Front-end')}
+            ${roleColumn('tester','QA / Tester')}
+          </div>
+          ${p.obs?`<div style="margin-top:12px;background:#fff;border:1px solid var(--gray-200);border-left:4px solid var(--amber);border-radius:9px;padding:10px 12px"><div style="font-size:10px;font-weight:800;color:var(--amber);letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px">Observação</div><div style="font-size:12px;color:var(--gray-700)">${p.obs}</div></div>`:''}
+        </div>
+      </div>`;
+    document.getElementById('btnProjectPreviewPdf').addEventListener('click', ()=>generateProjectsPDF([p], `relatorio_projeto_${slug(p.nome)}.pdf`, `Relatório de Projeto — ${p.nome}`));
+  }
   const selProf = document.getElementById('reportProfissional');
   selProf.addEventListener('change', ()=>buildProfProjectRows(selProf.value));
   if(selProf.value) buildProfProjectRows(selProf.value);
+
+  const selProject = document.getElementById('reportProject');
+  selProject.addEventListener('change', ()=>buildProjectPreview(selProject.value));
+  if(selProject.value) buildProjectPreview(selProject.value);
 
   document.getElementById('btnGeneratePdf').addEventListener('click', ()=>{
     const name = document.getElementById('reportProfissional').value;
@@ -1790,6 +1914,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 </body>
 </html>
+
 
 
 
