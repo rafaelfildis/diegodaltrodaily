@@ -542,7 +542,6 @@ function renderShell(){
       <div class="topbar-actions">
         <button class="btn btn-ghost" id="btnExport">${icon('download')}Exportar</button>
         <button class="btn btn-primary" id="btnNewProject">${icon('plus')}Novo Projeto</button>
-        <div class="profile-chip">${avatar('Coordenação TI','po',30)}<div><span>Coordenação de TI</span><small>Gestão de Portfólio</small></div></div>
       </div>
     </header>
     <div class="content" id="content"></div>
@@ -640,9 +639,10 @@ async function exportCurrentViewPDF(){
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 22;
-    const footerH = 16;
+    const headerH = 52;
+    const footerH = 18;
     const imgW = pageW - margin*2;
-    const usableH = pageH - margin*2 - footerH;
+    const usableH = pageH - headerH - margin - footerH;
     const sourcePageH = Math.floor(usableH * canvas.width / imgW);
     const pageCanvas = document.createElement('canvas');
     const pageCtx = pageCanvas.getContext('2d');
@@ -660,9 +660,18 @@ async function exportCurrentViewPDF(){
 
     pages.forEach((page,idx)=>{
       if(idx>0) pdf.addPage();
-      pdf.addImage(page.data,'PNG',margin,margin,imgW,page.height,undefined,'MEDIUM');
+      /* cabeçalho timbrado */
+      pdf.setFillColor(10,27,51); pdf.rect(0,0,pageW,headerH,'F');
+      try{ pdf.addImage(SISD_LOGO_WHITE_B64,'PNG',margin,4,44,44); }catch(e){}
+      pdf.setTextColor(255,255,255);
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(13); pdf.text('Saúde Digital - SISD',margin+50,22);
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(9); pdf.text(title,margin+50,38);
+      pdf.setFontSize(8); pdf.text(new Date().toLocaleDateString('pt-BR'),pageW-margin,38,{align:'right'});
+      /* conteúdo */
+      pdf.addImage(page.data,'PNG',margin,headerH+4,imgW,page.height,undefined,'MEDIUM');
+      /* rodapé */
       pdf.setFont('helvetica','normal'); pdf.setFontSize(8); pdf.setTextColor(120,130,145);
-      pdf.text(`Saúde Digital - SISD — ${title} — página ${idx+1} de ${pages.length}`, margin, pageH-10);
+      pdf.text(`Saúde Digital - SISD — ${title} — página ${idx+1} de ${pages.length}`, margin, pageH-6);
     });
     pdf.save(`dashboard_${slug(title)}.pdf`);
     toast(`PDF da tela "${title}" gerado com sucesso.`);
@@ -722,7 +731,7 @@ function renderOverview(){
   const c = document.getElementById('content');
   c.innerHTML = `
   <div class="view-head">
-    <div><h1>Visão Geral do Portfólio</h1><p>Panorama executivo de ${total} frentes de tecnologia e saúde digital da SESAB, com base na planilha de gerenciamento de projetos.</p></div>
+    <div><h1>VISÃO GERAL PROJETOS SISTEMAS - SISD/CGTICS</h1></div>
   </div>
   <div class="kpi-grid">
     ${kpis.map(k=>`
@@ -735,7 +744,7 @@ function renderOverview(){
   </div>
 
   <div class="panel">
-    <div class="panel-head"><div><h3>Portfólio de Projetos</h3><div class="sub">Tabela filtrável — clique nos cabeçalhos para ordenar</div></div>
+    <div class="panel-head"><div><h3>Projetos</h3><div class="sub">Tabela filtrável — clique nos cabeçalhos para ordenar</div></div>
       <button class="link-btn" onclick="setView('projects')">Ver mapa de equipe ${icon('arrowRight')}</button>
     </div>
     <div class="panel-body" id="portfolioPanelBody">
@@ -919,7 +928,7 @@ function renderProjects(){
   const c = document.getElementById('content');
   c.innerHTML = `
   <div class="view-head">
-    <div><h1>Projetos</h1><p>Mapa de vínculo entre cada projeto e sua equipe técnica, e visão tabular completa do portfólio.</p></div>
+    <div><h1>Projetos</h1><p>Mapa de vínculo entre cada projeto e sua equipe técnica, e visão tabular completa do projeto.</p></div>
   </div>
   <div class="tabs">
     <button class="tab-btn active" data-tab="mapa">${icon('map')}Mapa de Equipe</button>
@@ -1215,7 +1224,7 @@ function renderReports(){
     .map(p=>`<option value="${p.id}">${p.nome} — ${p.tipo} · ${p.status}</option>`).join('');
 
   c.innerHTML = `
-  <div class="view-head"><div><h1>Relatórios</h1><p>Exportações do portfólio em PDF — por profissional, por projeto individual ou relatório geral de todos os projetos.</p></div></div>
+  <div class="view-head"><div><h1>Relatórios</h1><p>Exportações do projeto em PDF — por profissional, por projeto individual ou relatório geral de todos os projetos.</p></div></div>
 
   <div style="margin-bottom:16px">
     <div class="panel" style="margin-bottom:0">
@@ -1389,21 +1398,13 @@ function pdfWriteHeader(doc, subtitle){
   const W=doc.internal.pageSize.getWidth(), M=PDF_M;
   doc.setFillColor(10,27,51); doc.rect(0,0,W,80,'F');
 
-  const logoX=M, logoY=10, logoS=48;
-  doc.setFillColor(255,255,255);
-  doc.circle(logoX+logoS/2,logoY+logoS/2,logoS/2,'F');
-  doc.setDrawColor(210,222,238); doc.setLineWidth(1.2);
-  doc.circle(logoX+logoS/2,logoY+logoS/2,logoS/2-1.5,'S');
-  if(SISD_LOGO_B64){
-    try{ doc.addImage(SISD_LOGO_B64,'PNG',logoX+3,logoY+3,logoS-6,logoS-6); }
-    catch(e){ pdfDrawLogoFallback(doc,logoX,logoY,logoS); }
-  } else {
-    pdfDrawLogoFallback(doc,logoX,logoY,logoS);
-  }
+  const logoX=M, logoY=10, logoS=56;
+  try{ doc.addImage(SISD_LOGO_WHITE_B64,'PNG',logoX,logoY,logoS,logoS); }
+  catch(e){ pdfDrawLogoFallback(doc,logoX,logoY,logoS); }
 
   doc.setTextColor(255,255,255);
-  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Saúde Digital - SISD',M+64,32);
-  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(subtitle,M+64,50);
+  doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.text('Saúde Digital - SISD',M+logoS+12,32);
+  doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.text(subtitle,M+logoS+12,50);
   doc.setFontSize(8.5); doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`,W-M,50,{align:'right'});
 }
 
