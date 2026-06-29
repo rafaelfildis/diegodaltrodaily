@@ -635,7 +635,13 @@ async function exportCurrentViewPDF(){
     document.querySelectorAll('.no-screen-pdf').forEach(el=>el.style.visibility='');
 
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ orientation:'landscape', unit:'pt', format:'a4' });
+
+    /* Detecta cards grandes — usa A3 se houver team-cards ou cards altos */
+    const hasLargeCards = content.querySelector('.team-card') !== null
+      || content.scrollHeight / Math.max(content.scrollWidth, 1) > 3;
+    const pageFormat = hasLargeCards ? 'a3' : 'a4';
+
+    const pdf = new jsPDF({ orientation:'landscape', unit:'pt', format:pageFormat });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
     const margin = 22;
@@ -644,18 +650,60 @@ async function exportCurrentViewPDF(){
     const imgW = pageW - margin*2;
     const usableH = pageH - headerH - margin - footerH;
     const sourcePageH = Math.floor(usableH * canvas.width / imgW);
+
+    /* Coleta tops dos cards raiz para corte entre cards */
+    const contentRect = content.getBoundingClientRect();
+    const scaleY = canvas.height / content.scrollHeight;
+    const rootSel = '.map-card, .team-card, .project-card, .kpi-card, .kpi-grid, .panel, .table-wrap, .view-head';
+
+    /* Quebras forçadas — elementos com data-pdf-break="true" */
+    const forcedBreaks = new Set();
+    content.querySelectorAll('[data-pdf-break="true"]').forEach(el=>{
+      const r = el.getBoundingClientRect();
+      const top = Math.round((r.top - contentRect.top + content.scrollTop) * scaleY);
+      if(top > 20) forcedBreaks.add(top);
+    });
+
+    const cardTopsPx = [0];
+    content.querySelectorAll(rootSel).forEach(el=>{
+      const parent = el.parentElement?.closest(rootSel.split(',').map(s=>s.trim()).join(','));
+      if(parent) return;
+      const r = el.getBoundingClientRect();
+      const top = Math.round((r.top - contentRect.top + content.scrollTop) * scaleY);
+      if(top > 20) cardTopsPx.push(top);
+    });
+    cardTopsPx.sort((a,b)=>a-b);
+
+    /* Para cada página: respeita quebras forçadas e depois corta antes do card que transborda */
+    function getSlice(srcY){
+      const limit = srcY + sourcePageH;
+      if(limit >= canvas.height) return canvas.height - srcY;
+
+      /* Verifica se há quebra forçada entre srcY e limit */
+      for(const fb of [...forcedBreaks].sort((a,b)=>a-b)){
+        if(fb > srcY && fb <= limit) return fb - srcY; // corta na quebra forçada
+      }
+
+      /* Senão: corta antes do primeiro card que ultrapassa o limite */
+      for(const top of cardTopsPx){
+        if(top > limit) return top - srcY;
+      }
+      return sourcePageH;
+    }
+
     const pageCanvas = document.createElement('canvas');
     const pageCtx = pageCanvas.getContext('2d');
     pageCanvas.width = canvas.width;
 
     const pages = [];
-    for(let sourceY=0; sourceY<canvas.height; sourceY+=sourcePageH){
-      const sliceH = Math.min(sourcePageH, canvas.height-sourceY);
+    let srcY = 0;
+    while(srcY < canvas.height){
+      const sliceH = Math.max(getSlice(srcY), 10);
       pageCanvas.height = sliceH;
-      pageCtx.fillStyle = '#F7F9FB';
-      pageCtx.fillRect(0,0,pageCanvas.width,pageCanvas.height);
-      pageCtx.drawImage(canvas,0,sourceY,canvas.width,sliceH,0,0,canvas.width,sliceH);
-      pages.push({data:pageCanvas.toDataURL('image/png',1), height:sliceH * imgW / canvas.width});
+      pageCtx.fillStyle='#F7F9FB'; pageCtx.fillRect(0,0,pageCanvas.width,sliceH);
+      pageCtx.drawImage(canvas,0,srcY,canvas.width,sliceH,0,0,canvas.width,sliceH);
+      pages.push({data:pageCanvas.toDataURL('image/png',1), height:sliceH*imgW/canvas.width});
+      srcY += sliceH;
     }
 
     pages.forEach((page,idx)=>{
@@ -981,7 +1029,7 @@ function renderMapView(container){
       {key:'front',label:'Front-end',people:p.front},
       {key:'tester',label:'QA / Tester',people:p.tester}
     ];
-    return `<div class="map-card" data-pid="${p.id}">
+    return `<div class="map-card" data-pid="${p.id}"${(p.id===30||p.id===33||p.id===37||p.id===49)?' data-pdf-break="true"':''}>
       <div class="map-card-head">
         <div><h4>${p.nome}</h4></div>
       </div>
