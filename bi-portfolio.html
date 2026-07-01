@@ -360,7 +360,8 @@ const ICON = {
   x:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   note:'<svg viewBox="0 0 24 24" fill="none"><path d="M5 4h11l3 3v13H5z"/><path d="M16 4v3h3M8 11h8M8 15h5"/></svg>',
   arrowRight:'<svg viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
-  user:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>'
+  user:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6.5 7-6.5s7 2.9 7 6.5"/></svg>',
+  trophy:'<svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v3.2a5 5 0 0 1-10 0V4z"/><path d="M7 5.2H4.6A2.6 2.6 0 0 0 7 9M17 5.2h2.4A2.6 2.6 0 0 1 17 9"/><path d="M12 12.2v2.8M9.4 20h5.2M9.9 17h4.2v1.4a1.4 1.4 0 0 1-1.4 1.4h-1.4a1.4 1.4 0 0 1-1.4-1.4V17z"/></svg>'
 };
 function icon(name){return ICON[name]||'';}
 
@@ -480,9 +481,37 @@ const ROSTER_BY_NAME = Object.fromEntries(ROSTER.map(r=>[r.name,r]));
 const ALL_NAMES = ROSTER.map(r=>r.name).sort((a,b)=>a.localeCompare(b,'pt-BR'));
 
 /* =========================================================
+   PRODUTIVIDADE — pontuação estimada a partir da carga real de
+   frentes (papel × projeto), ponderada por criticidade e status
+   do projeto. Sem dados de apontamento de horas/tarefas na base,
+   este é o proxy mais fiel de produtividade disponível na planilha.
+========================================================= */
+const CRIT_WEIGHT = {'Baixa':1,'Média':2,'Alta':3};
+const STATUS_WEIGHT = {'Backlog':0.3,'Levantando Requisitos':0.5,'Em andamento':1,'Pausado':0.4,'Concluído':1.2};
+function computeProductivity(){
+  const map = {};
+  PROJECTS.forEach(p=>{
+    const w = (CRIT_WEIGHT[p.crit]||1) * (STATUS_WEIGHT[p.status]!=null?STATUS_WEIGHT[p.status]:0.6);
+    ROLES.forEach(role=>{
+      p[role].forEach(name=>{
+        if(!map[name]) map[name] = {name, score:0, projectsSet:new Set()};
+        map[name].score += w;
+        map[name].projectsSet.add(p.id);
+      });
+    });
+  });
+  return Object.values(map).map(m=>({
+    name:m.name,
+    score:Math.round(m.score*10)/10,
+    projects:m.projectsSet.size
+  })).sort((a,b)=>b.score-a.score);
+}
+const PRODUCTIVITY = computeProductivity();
+
+/* =========================================================
    STATE / FILTERS
 ========================================================= */
-const state = { search:'', status:'', tipo:'', crit:'', profissional:'', sortCol:'nome', sortDir:1, mapSelectedPerson:null };
+const state = { search:'', status:'', tipo:'', crit:'', profissional:'', sortCol:'nome', sortDir:1, mapSelectedPerson:null, prodSearch:'', prodProject:'' };
 
 function matchesFilters(p){
   if(state.status && p.status!==state.status) return false;
@@ -506,6 +535,7 @@ const NAV = [
  {id:'pipeline',label:'Pipeline',icon:'pipeline'},
  {id:'team',label:'Equipes',icon:'users'},
  {id:'indicators',label:'Indicadores',icon:'chart'},
+ {id:'productivity',label:'Produtividade',icon:'trophy'},
  {id:'observations',label:'Observações',icon:'note'},
  {id:'reports',label:'Relatórios',icon:'doc'},
  {id:'settings',label:'Configurações',icon:'settings'}
@@ -585,7 +615,7 @@ function setView(id){
   currentView=id;
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===id));
   document.getElementById('sidebar').classList.remove('open');
-  const renderers = {overview:renderOverview,projects:renderProjects,pipeline:renderPipeline,team:renderTeam,indicators:renderIndicators,observations:renderObservations,
+  const renderers = {overview:renderOverview,projects:renderProjects,pipeline:renderPipeline,team:renderTeam,indicators:renderIndicators,productivity:renderProductivity,observations:renderObservations,
     reports:renderReports,
     settings:()=>renderPlaceholder('Configurações',['Controle de permissões por perfil (gestor, PO, dev, QA)','Conexão direta à planilha/base de origem (atualização automática)','Personalização de campos, papéis e limites de capacidade'])};
   (renderers[id]||renderOverview)();
@@ -1234,6 +1264,99 @@ function renderIndicators(){
         ${topLoad.map(r=>`<div class="bars-row"><span class="lbl">${r.name}</span><div class="bars-track"><div class="bars-fill" style="width:${r.totalProjects/maxLoad*100}%;background:${r.overRoles.length?'var(--red)':'var(--accent)'}"></div></div><span>${r.totalProjects}</span></div>`).join('')}
       </div></div>
   </div>`;
+}
+
+/* =========================================================
+   PRODUTIVIDADE
+========================================================= */
+function renderProductivity(){
+  const c = document.getElementById('content');
+  const projOpts = [...PROJECTS].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(p=>`<option value="${p.id}">${p.nome}</option>`).join('');
+  const profOpts = ALL_NAMES.map(n=>`<option value="${n}">${n} — ${ROSTER_BY_NAME[n].roleList.map(r=>ROLE_LABEL[r]).join(' + ')}</option>`).join('');
+
+  c.innerHTML = `
+  <div class="view-head"><div><h1>Produtividade</h1><p>Ranking estimado a partir da carga de frentes por profissional, ponderada pela criticidade e status de cada projeto.</p></div></div>
+  <div class="panel">
+    <div class="panel-head"><div><h3>Filtro de produtividade</h3><div class="sub">Selecione um profissional ou isole os profissionais de um projeto específico</div></div></div>
+    <div class="panel-body finder-panel">
+      <div class="finder-field">
+        <label>Profissional</label>
+        <select id="prodSearchProf"><option value="">Todos os profissionais</option>${profOpts}</select>
+      </div>
+      <div class="finder-field">
+        <label>Projeto</label>
+        <select id="prodFilterProject"><option value="">Todos os projetos</option>${projOpts}</select>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="prodClearFilters">Limpar filtros</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><div><h3>Ranking dos profissionais mais produtivos</h3><div class="sub" id="prodRankingSub"></div></div></div>
+    <div class="panel-body" id="prodRanking"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-head"><div><h3>Detalhamento por profissional</h3><div class="sub">Pontuação = soma, por papel e projeto, de (peso da criticidade × peso do status)</div></div></div>
+    <div class="panel-body table-wrap" id="prodTableWrap"></div>
+  </div>`;
+
+  injectBanner(c);
+  document.getElementById('prodSearchProf').value = state.prodSearch;
+  document.getElementById('prodFilterProject').value = state.prodProject;
+  document.getElementById('prodSearchProf').addEventListener('change', e=>{ state.prodSearch=e.target.value; renderProductivityBody(); });
+  document.getElementById('prodFilterProject').addEventListener('change', e=>{ state.prodProject=e.target.value; renderProductivityBody(); });
+  document.getElementById('prodClearFilters').addEventListener('click', ()=>{
+    state.prodSearch=''; state.prodProject='';
+    document.getElementById('prodSearchProf').value='';
+    document.getElementById('prodFilterProject').value='';
+    renderProductivityBody();
+  });
+  renderProductivityBody();
+}
+function renderProductivityBody(){
+  let list = [...PRODUCTIVITY];
+  if(state.prodProject){
+    const pid = parseInt(state.prodProject);
+    const proj = PROJECTS.find(p=>p.id===pid);
+    const peopleOnProj = proj ? new Set(allPeopleOf(proj)) : new Set();
+    list = list.filter(m=>peopleOnProj.has(m.name));
+  }
+  if(state.prodSearch){
+    list = list.filter(m=>m.name===state.prodSearch);
+  }
+
+  const subEl = document.getElementById('prodRankingSub');
+  if(subEl) subEl.textContent = `${list.length} profissional(is) no ranking`;
+
+  const top = list.slice(0,10);
+  const maxScore = Math.max(1, ...top.map(m=>m.score));
+  const medal = i => i===0?{bg:'#F5C344',fg:'#5C4400'} : i===1?{bg:'#C9D1DB',fg:'#3A4250'} : i===2?{bg:'#E3A36B',fg:'#5A3111'} : {bg:'var(--gray-100)',fg:'var(--gray-600)'};
+  document.getElementById('prodRanking').innerHTML = top.length ? `<div class="bars-list">
+    ${top.map((m,i)=>{
+      const r = ROSTER_BY_NAME[m.name];
+      const md = medal(i);
+      return `<div class="bars-row" style="grid-template-columns:26px 160px 1fr 50px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:10.5px;font-weight:800;background:${md.bg};color:${md.fg}">${i+1}</span>
+        <span class="lbl" style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${avatar(m.name,r.roleList[0],20)}${m.name}</span>
+        <div class="bars-track"><div class="bars-fill" style="width:${m.score/maxScore*100}%;background:${i<3?'var(--accent)':'var(--blue-600)'}"></div></div>
+        <span style="font-weight:700;color:var(--navy-900);text-align:right">${m.score}</span>
+      </div>`;
+    }).join('')}
+  </div>` : '<p class="cell-muted">Nenhum profissional corresponde aos filtros aplicados.</p>';
+
+  document.getElementById('prodTableWrap').innerHTML = `<table class="data-table">
+    <thead><tr><th>#</th><th>Profissional</th><th>Papéis</th><th>Projetos</th><th>Pontuação</th></tr></thead>
+    <tbody>${list.map((m,i)=>{
+      const r = ROSTER_BY_NAME[m.name];
+      return `<tr>
+        <td class="cell-muted">${i+1}</td>
+        <td class="proj-name-cell"><strong>${m.name}</strong></td>
+        <td class="cell-muted">${r.roleList.map(rl=>ROLE_LABEL[rl]).join(', ')}</td>
+        <td class="people-count">${m.projects} projeto(s)</td>
+        <td style="font-weight:700;color:var(--navy-900)">${m.score}</td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="5" class="cell-muted" style="padding:20px;text-align:center">Nenhum profissional corresponde aos filtros aplicados.</td></tr>`}
+    </tbody></table>`;
 }
 
 /* =========================================================
