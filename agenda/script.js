@@ -378,6 +378,12 @@ function construirOcorrencia(icalEvent, startTime, endTime, recorrente) {
   };
 
   evento.categoria = classificarEvento(evento);
+  // Cancelamento real (STATUS:CANCELLED) ou "manual" — muitos organizadores
+  // apenas prefixam o título ("Cancelado: ...", "Evento cancelado...") sem
+  // atualizar o STATUS do ICS, então o título também é considerado.
+  evento.cancelado =
+    evento.status === "cancelado" ||
+    contemAlgumaPalavra(normalizarTexto(titulo), ["cancelado", "cancelada"]);
   return evento;
 }
 
@@ -678,7 +684,7 @@ function criarCardElemento(evento) {
   card.dataset.eventoId = evento.id;
   if (situacao === "andamento") card.classList.add("card--em-andamento");
   if (situacao === "concluido") card.classList.add("card--concluido");
-  if (evento.status === "cancelado") card.classList.add("card--cancelado");
+  if (evento.cancelado) card.classList.add("card--cancelado");
 
   const horario = evento.diaInteiro
     ? "Dia inteiro"
@@ -687,12 +693,12 @@ function criarCardElemento(evento) {
   const badges = [];
   badges.push(`<span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span>`);
   if (evento.recorrente) badges.push(`<span class="badge badge--recorrente">Recorrente</span>`);
-  if (evento.status === "cancelado") badges.push(`<span class="badge badge--cancelado">Cancelado</span>`);
   if (situacao === "andamento") badges.push(`<span class="badge badge--andamento">Em andamento</span>`);
   if (situacao === "concluido") badges.push(`<span class="badge badge--concluido">Concluído</span>`);
   if (evento.conflito) badges.push(`<span class="badge badge--conflito">Conflito de horário</span>`);
 
   card.innerHTML = `
+    ${evento.cancelado ? `<div class="card__banner-cancelado">⚠ Compromisso cancelado</div>` : ""}
     <div class="card__topo">
       <span class="card__horario">${horario}</span>
       <span class="card__badges">${badges.join("")}</span>
@@ -927,7 +933,7 @@ function compararEventosTabela(a, b, campo) {
 }
 
 function rotuloStatus(evento) {
-  if (evento.status === "cancelado") return "Cancelado";
+  if (evento.cancelado) return "Cancelado";
   const situacao = situacaoTemporal(evento);
   if (situacao === "andamento") return "Em andamento";
   if (situacao === "concluido") return "Concluído";
@@ -1046,7 +1052,7 @@ function abrirPainelDetalhes(eventoId) {
   const badges = [];
   badges.push(`<span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span>`);
   if (evento.recorrente) badges.push(`<span class="badge badge--recorrente">Recorrente</span>`);
-  if (evento.status === "cancelado") badges.push(`<span class="badge badge--cancelado">Cancelado</span>`);
+  if (evento.cancelado) badges.push(`<span class="badge badge--cancelado">Cancelado</span>`);
   if (situacao === "andamento") badges.push(`<span class="badge badge--andamento">Em andamento</span>`);
   if (situacao === "concluido") badges.push(`<span class="badge badge--concluido">Concluído</span>`);
   if (evento.conflito) badges.push(`<span class="badge badge--conflito">Conflito de horário</span>`);
@@ -1253,8 +1259,9 @@ const CATEGORIA_CORES_EXPORT = {
 // local ou duração — o dia/data já aparecem no cabeçalho de cada grupo.
 function construirCardExportacao(evento) {
   const cores = CATEGORIA_CORES_EXPORT[evento.categoria] || CATEGORIA_CORES_EXPORT["pauta-presencial"];
+  const corBorda = evento.cancelado ? "#C94B4B" : cores.borda;
   const div = document.createElement("div");
-  div.style.cssText = `font-family:'Segoe UI', Arial, sans-serif; width:700px; padding:10px 16px; margin-bottom:8px; background:#fff; border:1px solid #DCE5EF; border-left:4px solid ${cores.borda}; border-radius:8px;`;
+  div.style.cssText = `font-family:'Segoe UI', Arial, sans-serif; width:700px; padding:10px 16px; margin-bottom:8px; background:#fff; border:1px solid #DCE5EF; border-left:4px solid ${corBorda}; border-radius:8px;`;
 
   const horario = evento.diaInteiro
     ? "Dia inteiro"
@@ -1264,10 +1271,19 @@ function construirCardExportacao(evento) {
   // então continua aparecendo mesmo no resumo minimalista.
   const mostrarLink = evento.categoria === "pauta-online" && !!evento.link;
 
+  const bannerCancelado = evento.cancelado
+    ? `<div style="background:#C94B4B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:5px 12px;margin:-10px -16px 8px;border-radius:6px 6px 0 0;">⚠ Compromisso cancelado</div>`
+    : "";
+
+  const estiloTitulo = evento.cancelado
+    ? "flex:1;min-width:0;font-size:14px;font-weight:600;color:#607086;text-decoration:line-through;"
+    : "flex:1;min-width:0;font-size:14px;font-weight:600;color:#10233C;";
+
   div.innerHTML = `
+    ${bannerCancelado}
     <div style="display:flex;align-items:center;gap:14px;">
       <div style="min-width:88px;flex-shrink:0;font-size:12.5px;font-weight:700;color:#174D83;">${horario}</div>
-      <div style="flex:1;min-width:0;font-size:14px;font-weight:600;color:#10233C;">${escapeHtml(evento.titulo)}</div>
+      <div style="${estiloTitulo}">${escapeHtml(evento.titulo)}</div>
       <span style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:4px 10px;border-radius:999px;background:${cores.fundo};color:${cores.texto};white-space:nowrap;">${CATEGORIA_LABEL[evento.categoria] || ""}</span>
     </div>
     ${mostrarLink ? `<div style="margin-top:6px;padding-left:102px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}

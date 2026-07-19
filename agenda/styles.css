@@ -561,8 +561,28 @@ button, input {
 }
 .card--em-andamento::before { background: var(--color-success); }
 .card--concluido { opacity: 0.65; }
-.card--cancelado { opacity: 0.6; }
-.card--cancelado .card__titulo { text-decoration: line-through; }
+
+/* Cancelado é destacado, não esmaecido — precisa chamar atenção, não passar
+   despercebido entre os demais compromissos. */
+.card--cancelado {
+  opacity: 1;
+  border-color: var(--color-error);
+  box-shadow: 0 0 0 1px var(--color-error);
+}
+.card--cancelado::before { background: var(--color-error); }
+.card--cancelado .card__titulo { text-decoration: line-through; color: var(--color-text-secondary); }
+
+.card__banner-cancelado {
+  background: var(--color-error);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 6px 12px;
+  margin: -14px -16px 10px;
+  border-radius: var(--raio) var(--raio) 0 0;
+}
 
 .card__topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 6px; }
 .card__horario { font-size: 0.78rem; font-weight: 700; color: var(--color-secondary); white-space: nowrap; }
