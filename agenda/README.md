@@ -31,6 +31,20 @@ Acesse `http://localhost:3000`.
 
 Opcionalmente, copie `.env.example` para `.env` e ajuste `CALENDAR_ICS_URL`, `ALLOWED_ORIGIN` e `CACHE_TTL_MS` conforme o ambiente.
 
+## Deploy na Vercel
+
+O repositório tem tanto `server.js` (Express, para rodar localmente com `npm start`) quanto `api/calendar.js` (função serverless equivalente, usada em produção na Vercel). A Vercel não executa o `server.js` diretamente — ela detecta automaticamente arquivos dentro de `api/` como funções serverless e serve os demais arquivos estaticamente.
+
+Passos no painel da Vercel:
+
+1. Abra o projeto na Vercel → **Settings → General → Root Directory**.
+2. Defina o Root Directory como `agenda` (já que o app fica nessa subpasta do repositório) e salve.
+3. Nenhum "Build Command" é necessário (é um site estático + 1 função serverless — preset "Other").
+4. Opcional: em **Settings → Environment Variables**, defina `CALENDAR_ICS_URL`, `ALLOWED_ORIGIN` e `CACHE_TTL_MS` se quiser sobrescrever os padrões.
+5. Faça um novo deploy (redeploy do último commit, ou apenas dê push de um novo commit).
+
+Depois disso, `/` deve carregar `agenda/index.html` e `/api/calendar` deve responder com o ICS.
+
 ## Como funciona a leitura do calendário
 
 1. O frontend tenta `fetch(CALENDAR_ICS_URL)` diretamente do navegador.
@@ -48,7 +62,7 @@ Nenhuma credencial é usada ou exposta — o link ICS já é público (URL de ca
 - **Eventos que atravessam vários dias**: são agrupados na data de início da timeline; o card mostra a duração total (ex.: "3 dias"). Já para os filtros de dia/semana/mês, o evento aparece se o seu intervalo *intersecta* o período filtrado — ou seja, um evento de 3 dias aparece também nos filtros dos dias intermediários.
 - **Classificação automática**: função centralizada `classificarEvento(evento)` em `script.js`, avaliando título, descrição, local, link e categorias ICS por palavras-chave. Prioridade: viagem → mestrado → pauta online → pauta presencial (fallback quando nada é identificado).
 - **Cache local**: a última lista de eventos processada é salva em `localStorage` a cada atualização bem-sucedida. Se a busca falhar (rede/CORS/indisponibilidade do Outlook), a interface exibe os dados salvos com aviso de que podem estar desatualizados.
-- **`server.js` como camada intermediária**: entre as opções sugeridas (Vercel/Netlify/Cloudflare Worker/Express), optou-se por um endpoint Express por ser executável localmente e em qualquer provedor Node (Render, Railway, VPS, etc.) sem exigir uma plataforma específica. Para deploy em Vercel/Netlify, o mesmo código de `app.get("/api/calendar", ...)` pode ser adaptado para uma função serverless (`api/calendar.js`) reaproveitando a mesma lógica de fetch + cache + CORS.
+- **Duas camadas intermediárias equivalentes**: `server.js` (Express) para rodar localmente/em qualquer provedor Node (Render, Railway, VPS), e `api/calendar.js` (função serverless) para deploy na Vercel — a Vercel não executa o Express diretamente, então a mesma lógica de fetch + cache + CORS foi duplicada nesse formato específico.
 
 ## Estrutura de dados do evento
 
