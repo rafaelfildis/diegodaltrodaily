@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Agenda Diego Daltro - SISD/SESAB</title>
+<meta name="description" content="Agenda institucional com sincronização automática do calendário Outlook/Microsoft 365." />
+<meta name="theme-color" content="#061A35" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <a class="skip-link" href="#conteudo-principal">Pular para o conteúdo principal</a>
+
+  <header class="topbar">
+    <div class="topbar__left">
+      <button id="btn-menu" class="icon-btn topbar__menu-btn" type="button" aria-label="Abrir menu de navegação" aria-controls="sidebar" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      </button>
+
+      <div class="topbar__brand">
+        <img src="logo-sisd.png" alt="Logotipo da Superintendência de Informação e Saúde Digital (SISD)" class="topbar__logo-sisd" />
+        <span class="topbar__logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="17" rx="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <path d="M8 14h2M8 17h5"></path>
+          </svg>
+        </span>
+        <div class="topbar__titles">
+          <h1>Agenda Diego Daltro</h1>
+          <p>SISD/SESAB — Compromissos sincronizados do Outlook / Microsoft 365</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar__search">
+      <svg class="topbar__search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      <input id="busca" type="search" placeholder="Buscar por título, descrição ou local…" aria-label="Busca global de compromissos" />
+    </div>
+
+    <div class="topbar__actions">
+      <button id="btn-atualizar" class="btn btn--primary" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        <span class="btn__label">Atualizar</span>
+      </button>
+      <a id="btn-abrir-outlook" class="btn btn--ghost-dark" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+        <span class="btn__label">Abrir no Outlook</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="app-shell" id="app-shell">
+    <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
+
+    <aside id="sidebar" class="sidebar" aria-label="Navegação e filtros">
+      <nav class="sidebar__nav" aria-label="Navegação principal">
+        <a class="sidebar__nav-item is-active" href="#conteudo-principal">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          <span class="sidebar__nav-label">Agenda</span>
+        </a>
+      </nav>
+
+      <div class="sidebar__filters">
+        <div class="filters__group">
+          <span class="filters__label" id="label-filtrar-data">Filtrar por data</span>
+          <div class="date-range" role="group" aria-labelledby="label-filtrar-data">
+            <label class="date-range__field">
+              <span>De</span>
+              <input id="filtro-data-inicio" class="input" type="date" />
+            </label>
+            <label class="date-range__field">
+              <span>Até</span>
+              <input id="filtro-data-fim" class="input" type="date" />
+            </label>
+          </div>
+          <p id="erro-data" class="form-error" role="alert" hidden></p>
+          <button id="btn-limpar-datas" class="link-button" type="button" hidden>Limpar datas</button>
+        </div>
+
+        <div class="filters__group">
+          <span class="filters__label" id="label-periodo">Período</span>
+          <div class="chip-group" id="periodo-group" role="group" aria-labelledby="label-periodo">
+            <button class="chip is-active" data-periodo="todos" type="button">Todos</button>
+            <button class="chip" data-periodo="dia" type="button">Hoje</button>
+            <button class="chip" data-periodo="semana" type="button">Semana</button>
+            <button class="chip" data-periodo="mes" type="button">Mês</button>
+          </div>
+        </div>
+
+        <div class="filters__group">
+          <span class="filters__label" id="label-categorias">Categorias</span>
+          <div class="chip-group" id="categoria-group" role="group" aria-labelledby="label-categorias">
+            <button class="chip chip--categoria" data-categoria="viagem" type="button">✈ Viagens</button>
+            <button class="chip chip--categoria" data-categoria="mestrado" type="button">🎓 Mestrado</button>
+            <button class="chip chip--categoria" data-categoria="pauta-online" type="button">💻 Pauta online</button>
+            <button class="chip chip--categoria" data-categoria="pauta-presencial" type="button">🏛 Pauta presencial</button>
+          </div>
+        </div>
+
+        <div class="filters__group filters__group--inline">
+          <label class="switch">
+            <input type="checkbox" id="mostrar-concluidos" checked />
+            <span class="switch__track"><span class="switch__thumb"></span></span>
+            <span>Mostrar concluídos</span>
+          </label>
+        </div>
+      </div>
+
+      <button id="btn-recolher-sidebar" class="sidebar__collapse-btn" type="button" aria-expanded="true">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        <span>Recolher menu</span>
+      </button>
+    </aside>
+
+    <main id="conteudo-principal" class="main" tabindex="-1">
+      <nav class="breadcrumbs" aria-label="Trilha de navegação">
+        <ol>
+          <li><a href="#conteudo-principal">Início</a></li>
+          <li aria-current="page">Agenda</li>
+        </ol>
+      </nav>
+
+      <section class="dashboard" aria-label="Indicadores da agenda">
+        <div class="stat-card">
+          <span class="stat-card__valor" id="stat-total">0</span>
+          <span class="stat-card__rotulo">Compromissos no filtro</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__valor" id="stat-hoje">0</span>
+          <span class="stat-card__rotulo">Hoje</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__valor" id="stat-semana">0</span>
+          <span class="stat-card__rotulo">Esta semana</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card__valor" id="stat-andamento">0</span>
+          <span class="stat-card__rotulo">Em andamento</span>
+        </div>
+      </section>
+
+      <div class="status-bar" id="status-bar">
+        <div class="status-bar__info">
+          <span id="status-loading" class="status-pill status-pill--loading" hidden>
+            <span class="spinner" aria-hidden="true"></span> Atualizando agenda…
+          </span>
+          <span id="status-success" class="status-pill status-pill--success" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Agenda atualizada
+          </span>
+          <span id="status-error" class="status-pill status-pill--error" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            <span id="status-error-msg">Não foi possível atualizar a agenda.</span>
+            <button id="btn-tentar-novamente" class="btn btn--tiny" type="button">Tentar novamente</button>
+          </span>
+          <span id="status-cache" class="status-pill status-pill--warning" hidden>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path></svg>
+            Exibindo dados salvos localmente — podem estar desatualizados.
+          </span>
+        </div>
+        <div class="status-bar__updated">
+          Última atualização: <strong id="ultima-atualizacao">—</strong>
+        </div>
+      </div>
+
+      <section class="active-filters" id="active-filters" aria-live="polite" hidden>
+        <div class="active-filters__lista" id="active-filters-lista"></div>
+        <button id="btn-limpar-filtros" class="link-button" type="button">Limpar todos os filtros</button>
+      </section>
+
+      <section class="content-toolbar">
+        <div class="filters__summary" id="filtros-resumo">0 compromissos</div>
+        <div class="view-toggle" role="group" aria-label="Modo de visualização">
+          <button class="view-toggle__btn is-active" id="btn-vista-timeline" data-vista="timeline" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            Linha do tempo
+          </button>
+          <button class="view-toggle__btn" id="btn-vista-tabela" data-vista="tabela" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line></svg>
+            Tabela
+          </button>
+        </div>
+      </section>
+
+      <section class="timeline-wrap" id="vista-timeline">
+        <div id="timeline" class="timeline" aria-live="polite"></div>
+        <div id="timeline-vazio" class="timeline-vazio" hidden>
+          Nenhum compromisso encontrado para os filtros selecionados.
+        </div>
+      </section>
+
+      <section class="table-wrap" id="vista-tabela" hidden>
+        <div class="table-scroll">
+          <table class="data-table" id="tabela-eventos">
+            <thead>
+              <tr>
+                <th scope="col"><button class="th-sort" data-sort="data" type="button">Data <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="th-sort" data-sort="horario" type="button">Horário <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="th-sort" data-sort="titulo" type="button">Título <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="th-sort" data-sort="categoria" type="button">Categoria <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="th-sort" data-sort="local" type="button">Local <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><button class="th-sort" data-sort="status" type="button">Status <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col"><span class="sr-only">Detalhes</span></th>
+              </tr>
+            </thead>
+            <tbody id="tabela-corpo"></tbody>
+          </table>
+        </div>
+        <div class="table-pagination" id="table-pagination">
+          <button id="btn-pagina-anterior" class="btn btn--tiny-outline" type="button">‹ Anterior</button>
+          <span id="pagina-info" aria-live="polite">Página 1 de 1</span>
+          <button id="btn-pagina-proxima" class="btn btn--tiny-outline" type="button">Próxima ›</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <section class="export-bar" aria-label="Exportação">
+    <div class="export-bar__group">
+      <span class="filters__label" id="label-export-formato">Formato</span>
+      <div class="chip-group" id="export-formato-group" role="group" aria-labelledby="label-export-formato">
+        <button class="chip is-active" data-formato="a4" type="button">A4</button>
+        <button class="chip" data-formato="mobile" type="button">Mobile vertical</button>
+      </div>
+    </div>
+    <div class="export-bar__actions">
+      <button id="btn-exportar-pdf" class="btn btn--secondary" type="button">Exportar PDF</button>
+      <button id="btn-exportar-jpeg" class="btn btn--secondary" type="button">Exportar JPEG</button>
+    </div>
+  </section>
+
+  <footer class="app-footer">
+    <p>Agenda Diego Daltro — SISD/SESAB — dados sincronizados automaticamente a cada 15 minutos. Fuso horário: America/Bahia.</p>
+  </footer>
+
+  <div id="export-sandbox" class="export-sandbox" aria-hidden="true"></div>
+
+  <div id="panel-backdrop" class="panel-backdrop" hidden></div>
+  <aside id="detail-panel" class="detail-panel" aria-hidden="true" aria-label="Detalhes do compromisso">
+    <div class="detail-panel__header">
+      <h2 id="detail-panel-titulo">Detalhes do compromisso</h2>
+      <button id="btn-fechar-painel" class="icon-btn" type="button" aria-label="Fechar painel de detalhes">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="detail-panel__body" id="detail-panel-corpo"></div>
+  </aside>
+
+  <div id="confirm-backdrop" class="panel-backdrop" hidden></div>
+  <div id="confirm-modal" class="confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-titulo" aria-describedby="confirm-mensagem" hidden>
+    <h2 id="confirm-titulo">Confirmar exportação</h2>
+    <p id="confirm-mensagem"></p>
+    <div class="confirm-modal__acoes">
+      <button id="confirm-cancelar" class="btn btn--ghost" type="button">Cancelar</button>
+      <button id="confirm-continuar" class="btn btn--primary" type="button">Continuar</button>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script type="module" src="script.js"></script>
+</body>
+</html>
