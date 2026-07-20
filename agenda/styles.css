@@ -760,6 +760,59 @@ button, input {
 .confirm-modal p { font-size: 0.88rem; color: var(--color-text-secondary); line-height: 1.5; }
 .confirm-modal__acoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
 
+/* ---------------------------------- Modal de exportação em texto ---------------------------------- */
+
+.text-export-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 47;
+  background: var(--color-surface);
+  border-radius: var(--raio);
+  box-shadow: var(--sombra-media);
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(600px, calc(100vh - 64px));
+  display: flex;
+  flex-direction: column;
+}
+.text-export-modal[hidden] { display: none; }
+
+.text-export-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+.text-export-modal__header h2 { font-size: 1rem; font-weight: 700; color: var(--color-text-primary); }
+
+.text-export-modal__area {
+  flex: 1;
+  min-height: 280px;
+  margin: 16px 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--raio-pequeno);
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+.text-export-modal__area:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+
+.text-export-modal__acoes {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+.text-export-modal__aviso { font-size: 0.8rem; font-weight: 700; color: var(--color-success); margin-right: auto; }
+
 /* ---------------------------------- Responsivo: desktop (sidebar fixa em coluna) ---------------------------------- */
 
 @media (min-width: 861px) {
@@ -809,7 +862,7 @@ button, input {
 @media print {
   .topbar, .sidebar, .sidebar-backdrop, .breadcrumbs, .dashboard, .status-bar,
   .active-filters, .content-toolbar, .export-bar, .app-footer,
-  .detail-panel, .panel-backdrop, .confirm-modal, .skip-link { display: none !important; }
+  .detail-panel, .panel-backdrop, .confirm-modal, .text-export-modal, .skip-link { display: none !important; }
   .app-shell { display: block; }
   .main { padding: 0; }
   .card { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }

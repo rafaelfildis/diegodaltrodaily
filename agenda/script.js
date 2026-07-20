@@ -41,7 +41,7 @@ const state = {
   ultimaAtualizacao: null,
   carregando: false,
   filtros: {
-    periodo: "todos", // todos | dia | semana | mes
+    periodo: "dia", // todos | dia | semana | mes — sem filtro explícito, mostra a agenda de hoje
     categorias: new Set(),
     busca: "",
     mostrarConcluidos: true,
@@ -794,7 +794,7 @@ function renderizarDashboard(filtrados) {
    FILTROS ATIVOS REMOVÍVEIS
    ========================================================================== */
 
-const PERIODO_LABEL = { dia: "Hoje", semana: "Esta semana", mes: "Este mês" };
+const PERIODO_LABEL = { todos: "Todos", dia: "Hoje", semana: "Esta semana", mes: "Este mês" };
 
 function sincronizarChipsPeriodo() {
   document.querySelectorAll("#periodo-group .chip").forEach((chip) => {
@@ -832,7 +832,7 @@ function esconderErroData() {
 }
 
 function limparTodosFiltros() {
-  state.filtros.periodo = "todos";
+  state.filtros.periodo = "dia";
   state.filtros.categorias = new Set();
   state.filtros.busca = "";
   state.filtros.mostrarConcluidos = true;
@@ -850,11 +850,11 @@ function renderizarFiltrosAtivos() {
   const lista = document.getElementById("active-filters-lista");
   const tags = [];
 
-  if (periodo !== "todos") {
+  if (periodo !== "dia") {
     tags.push({
       label: `Período: ${PERIODO_LABEL[periodo]}`,
       remover: () => {
-        state.filtros.periodo = "todos";
+        state.filtros.periodo = "dia";
         sincronizarChipsPeriodo();
       },
     });
@@ -1542,6 +1542,58 @@ async function exportarJPEG() {
 }
 
 /* ==========================================================================
+   EXPORTAÇÃO EM TEXTO (modal)
+   ========================================================================== */
+
+// Mesmo conteúdo minimalista das exportações em PDF/JPEG (horário, título,
+// categoria, link só para pauta online, aviso de cancelamento), em texto
+// simples — respeita os filtros ativos, igual às demais exportações.
+function construirTextoAgenda() {
+  const eventos = obterEventosFiltrados();
+  const grupos = agruparPorDia(eventos);
+  const linhas = [];
+
+  linhas.push("Agenda Diego Daltro - SISD/SESAB");
+  linhas.push("Gerado em " + formatarDataHora(new Date()));
+  linhas.push("");
+
+  if (eventos.length === 0) {
+    linhas.push("Nenhum compromisso encontrado para os filtros selecionados.");
+    return linhas.join("\n");
+  }
+
+  grupos.forEach((grupo) => {
+    linhas.push(grupo.rotulo.toUpperCase());
+    grupo.eventos.forEach((evento) => {
+      const horario = evento.diaInteiro
+        ? "Dia inteiro"
+        : `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
+      const aviso = evento.cancelado ? "  [⚠ CANCELADO]" : "";
+      linhas.push(`  ${horario} | ${CATEGORIA_LABEL[evento.categoria]} | ${evento.titulo}${aviso}`);
+      if (evento.categoria === "pauta-online" && evento.link) {
+        linhas.push(`      Link: ${evento.link}`);
+      }
+    });
+    linhas.push("");
+  });
+
+  return linhas.join("\n").trim();
+}
+
+function abrirModalTexto() {
+  document.getElementById("text-export-conteudo").value = construirTextoAgenda();
+  document.getElementById("text-export-copiado").hidden = true;
+  document.getElementById("text-export-modal").hidden = false;
+  document.getElementById("text-export-backdrop").hidden = false;
+  document.getElementById("text-export-conteudo").focus();
+}
+
+function fecharModalTexto() {
+  document.getElementById("text-export-modal").hidden = true;
+  document.getElementById("text-export-backdrop").hidden = true;
+}
+
+/* ==========================================================================
    LIGAÇÃO DE EVENTOS DE INTERFACE
    ========================================================================== */
 
@@ -1783,7 +1835,32 @@ function inicializarInterface() {
   document.getElementById("panel-backdrop").addEventListener("click", fecharPainelDetalhes);
 
   // ---------------------------------------------------------------------
-  // Tecla Esc: fecha o overlay mais recente (confirmação > painel > drawer)
+  // Exportação em texto (modal)
+  // ---------------------------------------------------------------------
+
+  document.getElementById("btn-exportar-texto").addEventListener("click", abrirModalTexto);
+  document.getElementById("btn-fechar-texto").addEventListener("click", fecharModalTexto);
+  document.getElementById("btn-fechar-texto-2").addEventListener("click", fecharModalTexto);
+  document.getElementById("text-export-backdrop").addEventListener("click", fecharModalTexto);
+
+  document.getElementById("btn-copiar-texto").addEventListener("click", async () => {
+    const textarea = document.getElementById("text-export-conteudo");
+    const aviso = document.getElementById("text-export-copiado");
+    try {
+      await navigator.clipboard.writeText(textarea.value);
+    } catch (e) {
+      // Sem permissão/API de clipboard: seleciona o texto para copiar manualmente.
+      textarea.focus();
+      textarea.select();
+    }
+    aviso.hidden = false;
+    setTimeout(() => {
+      aviso.hidden = true;
+    }, 2500);
+  });
+
+  // ---------------------------------------------------------------------
+  // Tecla Esc: fecha o overlay mais recente (confirmação > texto > painel > drawer)
   // ---------------------------------------------------------------------
 
   document.addEventListener("keydown", (ev) => {
@@ -1792,6 +1869,10 @@ function inicializarInterface() {
     const confirmModal = document.getElementById("confirm-modal");
     if (!confirmModal.hidden) {
       document.getElementById("confirm-cancelar").click();
+      return;
+    }
+    if (!document.getElementById("text-export-modal").hidden) {
+      fecharModalTexto();
       return;
     }
     if (document.getElementById("detail-panel").getAttribute("aria-hidden") === "false") {

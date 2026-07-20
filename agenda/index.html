@@ -84,8 +84,8 @@
         <div class="filters__group">
           <span class="filters__label" id="label-periodo">Período</span>
           <div class="chip-group" id="periodo-group" role="group" aria-labelledby="label-periodo">
-            <button class="chip is-active" data-periodo="todos" type="button">Todos</button>
-            <button class="chip" data-periodo="dia" type="button">Hoje</button>
+            <button class="chip" data-periodo="todos" type="button">Todos</button>
+            <button class="chip is-active" data-periodo="dia" type="button">Hoje</button>
             <button class="chip" data-periodo="semana" type="button">Semana</button>
             <button class="chip" data-periodo="mes" type="button">Mês</button>
           </div>
@@ -231,6 +231,7 @@
     <div class="export-bar__actions">
       <button id="btn-exportar-pdf" class="btn btn--secondary" type="button">Exportar PDF</button>
       <button id="btn-exportar-jpeg" class="btn btn--secondary" type="button">Exportar JPEG</button>
+      <button id="btn-exportar-texto" class="btn btn--secondary" type="button">Exportar Texto</button>
     </div>
   </section>
 
@@ -258,6 +259,22 @@
     <div class="confirm-modal__acoes">
       <button id="confirm-cancelar" class="btn btn--ghost" type="button">Cancelar</button>
       <button id="confirm-continuar" class="btn btn--primary" type="button">Continuar</button>
+    </div>
+  </div>
+
+  <div id="text-export-backdrop" class="panel-backdrop" hidden></div>
+  <div id="text-export-modal" class="text-export-modal" role="dialog" aria-modal="true" aria-labelledby="text-export-titulo" hidden>
+    <div class="text-export-modal__header">
+      <h2 id="text-export-titulo">Exportar em texto</h2>
+      <button id="btn-fechar-texto" class="icon-btn" type="button" aria-label="Fechar">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <textarea id="text-export-conteudo" class="text-export-modal__area" readonly></textarea>
+    <div class="text-export-modal__acoes">
+      <span id="text-export-copiado" class="text-export-modal__aviso" hidden>Copiado!</span>
+      <button id="btn-fechar-texto-2" class="btn btn--ghost" type="button">Fechar</button>
+      <button id="btn-copiar-texto" class="btn btn--primary" type="button">Copiar texto</button>
     </div>
   </div>
 
