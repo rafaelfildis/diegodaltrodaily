@@ -10,7 +10,7 @@ import ICAL from "https://cdn.jsdelivr.net/npm/ical.js@2.1.0/dist/ical.min.js";
    ========================================================================== */
 
 const CALENDAR_ICS_URL =
-  "https://outlook.office365.com/owa/calendar/65cfb5623f234028985baccad09b038b@saude.ba.gov.br/3bf59cb231fa445487f965f4bff5857413135215430858372856/calendar.ics";
+  "https://outlook.office365.com/owa/calendar/7390fe9481a141ad939331a8bd576247@saude.ba.gov.br/f56c542fabd0452f9f6c3178fbda6ea23840265162433551595/calendar.ics";
 
 // Link "humano" do mesmo calendário publicado, usado apenas no botão
 // "Abrir calendário no Outlook" — nunca como fonte de dados.
