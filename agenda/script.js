@@ -227,6 +227,7 @@ const CIDADES_REFERENCIA = [
 const PALAVRAS_MESTRADO = [
   "mestrado", "aula", "disciplina", "seminario", "orientacao",
   "atividade academica", "universidade", "doutorado", "banca",
+  "modulo", "mpsd",
 ];
 
 const PALAVRAS_ONLINE = [
