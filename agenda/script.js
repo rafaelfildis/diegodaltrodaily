@@ -573,31 +573,29 @@ function situacaoTemporal(evento) {
    FILTROS
    ========================================================================== */
 
-function eventoNoPeriodo(evento, periodo) {
-  if (periodo === "todos") return true;
+// Intervalo [início, fim] correspondente ao período selecionado, ou null
+// para "todos" (sem restrição). Centralizado aqui para ser reaproveitado
+// tanto na decisão de inclusão do evento quanto no recorte dos dias
+// exibidos de compromissos de vários dias (ver agruparPorDia).
+function janelaDoPeriodo(periodo) {
+  if (periodo === "todos") return null;
 
   const agora = new Date();
+  if (periodo === "dia") return { inicio: inicioDoDia(agora), fim: fimDoDia(agora) };
+  if (periodo === "semana") return { inicio: segundaDaSemana(agora), fim: domingoDaSemana(agora) };
+  if (periodo === "mes") return { inicio: inicioDoMes(agora), fim: fimDoMes(agora) };
+  return null;
+}
+
+function eventoNoPeriodo(evento, periodo) {
+  const janela = janelaDoPeriodo(periodo);
+  if (!janela) return true;
+
   const inicioEvento = new Date(evento.inicio).getTime();
   const fimEvento = new Date(evento.fim).getTime();
 
-  let inicioFiltro;
-  let fimFiltro;
-
-  if (periodo === "dia") {
-    inicioFiltro = inicioDoDia(agora).getTime();
-    fimFiltro = fimDoDia(agora).getTime();
-  } else if (periodo === "semana") {
-    inicioFiltro = segundaDaSemana(agora).getTime();
-    fimFiltro = domingoDaSemana(agora).getTime();
-  } else if (periodo === "mes") {
-    inicioFiltro = inicioDoMes(agora).getTime();
-    fimFiltro = fimDoMes(agora).getTime();
-  } else {
-    return true;
-  }
-
   // Interseção de intervalos — cobre eventos que atravessam mais de um dia.
-  return inicioEvento <= fimFiltro && fimEvento >= inicioFiltro;
+  return inicioEvento <= janela.fim.getTime() && fimEvento >= janela.inicio.getTime();
 }
 
 function eventoNoIntervaloDeData(evento, dataInicio, dataFim) {
@@ -648,20 +646,74 @@ const CATEGORIA_LABEL = {
   "pauta-presencial": "Pauta presencial",
 };
 
+// Todas as chaves "YYYY-MM-DD" que um compromisso atravessa (do dia de
+// início ao dia de fim, inclusive). Compromissos de um único dia retornam
+// apenas uma chave — usado para que compromissos de vários dias (viagens,
+// módulos de mestrado etc.) apareçam na agenda de cada dia que ocupam, não
+// somente no dia em que começam.
+const LIMITE_DIAS_ABRANGIDOS = 90; // proteção contra datas malformadas no ICS
+
+function diasQueEventoAbrange(evento) {
+  const inicioChave = chaveDia(new Date(evento.inicio));
+  const fimChave = chaveDia(new Date(evento.fim));
+  if (inicioChave === fimChave) return [inicioChave];
+
+  const dias = [];
+  let cursor = inicioDoDia(new Date(evento.inicio));
+  const fimCursor = inicioDoDia(new Date(evento.fim)).getTime();
+  let contador = 0;
+  while (cursor.getTime() <= fimCursor && contador < LIMITE_DIAS_ABRANGIDOS) {
+    dias.push(chaveDia(cursor));
+    const proximo = new Date(cursor);
+    proximo.setUTCDate(proximo.getUTCDate() + 1);
+    cursor = proximo;
+    contador++;
+  }
+  return dias;
+}
+
+function eventoEhContinuo(evento) {
+  return chaveDia(new Date(evento.inicio)) !== chaveDia(new Date(evento.fim));
+}
+
+// Janela de dias atualmente visível na tela (interseção do período
+// selecionado com o filtro manual de datas "De"/"Até"), como chaves
+// "YYYY-MM-DD". Retorna null nos limites em que não há restrição (ex.:
+// período "Todos" sem filtro de data manual). Usada para recortar quais
+// dias de um compromisso de vários dias devem ser exibidos — sem isso, um
+// compromisso que só passa perto do período filtrado (ex.: começa antes do
+// intervalo "De"/"Até" escolhido) reapareceria em dias fora do filtro.
+function janelaDeExibicaoAtual() {
+  const { periodo, dataInicio, dataFim } = state.filtros;
+  const janelaPeriodo = janelaDoPeriodo(periodo);
+
+  let inicioChave = janelaPeriodo ? chaveDia(janelaPeriodo.inicio) : null;
+  let fimChave = janelaPeriodo ? chaveDia(janelaPeriodo.fim) : null;
+
+  if (dataInicio && (!inicioChave || dataInicio > inicioChave)) inicioChave = dataInicio;
+  if (dataFim && (!fimChave || dataFim < fimChave)) fimChave = dataFim;
+
+  return { inicioChave, fimChave };
+}
+
 function agruparPorDia(eventos) {
+  const { inicioChave, fimChave } = janelaDeExibicaoAtual();
   const grupos = new Map();
   eventos.forEach((evento) => {
-    const chave = chaveDia(new Date(evento.inicio));
-    if (!grupos.has(chave)) grupos.set(chave, []);
-    grupos.get(chave).push(evento);
+    diasQueEventoAbrange(evento)
+      .filter((chave) => (!inicioChave || chave >= inicioChave) && (!fimChave || chave <= fimChave))
+      .forEach((chave) => {
+        if (!grupos.has(chave)) grupos.set(chave, []);
+        grupos.get(chave).push({ evento, diaChave: chave });
+      });
   });
 
   return Array.from(grupos.entries())
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([chave, lista]) => ({
       chave,
-      rotulo: formatarDataLonga(new Date(lista[0].inicio)),
-      eventos: lista.sort((a, b) => new Date(a.inicio) - new Date(b.inicio)),
+      rotulo: formatarDataLonga(new Date(`${chave}T12:00:00${offsetBahia()}`)),
+      eventos: lista.sort((a, b) => new Date(a.evento.inicio) - new Date(b.evento.inicio)),
     }));
 }
 
@@ -678,7 +730,56 @@ function duracaoLegivel(evento) {
   return resto ? `${horas}h${String(resto).padStart(2, "0")}` : `${horas}h`;
 }
 
-function criarCardElemento(evento) {
+function formatarDataCurta(date) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: DISPLAY_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+}
+
+// Horário exibido no bloco de tempo do cartão (linha do tempo), ajustado ao
+// dia específico dentro do intervalo — nos dias intermediários e no dia
+// final de um compromisso de vários dias, o horário "bruto" de início/fim
+// do evento não faz sentido isolado, então cada dia mostra a informação
+// relevante para si.
+function tempoCartaoPorDia(evento, diaChave) {
+  if (evento.diaInteiro) {
+    return { horaInicio: "Dia inteiro", horaFim: duracaoLegivel(evento) };
+  }
+  if (!eventoEhContinuo(evento)) {
+    return {
+      horaInicio: formatarHora(new Date(evento.inicio)),
+      horaFim: `até ${formatarHora(new Date(evento.fim))}`,
+    };
+  }
+
+  const diaInicioChave = chaveDia(new Date(evento.inicio));
+  const diaFimChave = chaveDia(new Date(evento.fim));
+  if (diaChave === diaInicioChave) {
+    return { horaInicio: formatarHora(new Date(evento.inicio)), horaFim: "continua no(s) dia(s) seguinte(s)" };
+  }
+  if (diaChave === diaFimChave) {
+    return { horaInicio: "Continuação", horaFim: `até ${formatarHora(new Date(evento.fim))}` };
+  }
+  return { horaInicio: "Dia inteiro", horaFim: "compromisso contínuo" };
+}
+
+// Equivalente resumido em uma linha só, usado nas exportações (PDF/JPEG/texto).
+function horarioResumoPorDia(evento, diaChave) {
+  if (evento.diaInteiro) return "Dia inteiro";
+  if (!eventoEhContinuo(evento)) {
+    return `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
+  }
+
+  const diaInicioChave = chaveDia(new Date(evento.inicio));
+  const diaFimChave = chaveDia(new Date(evento.fim));
+  if (diaChave === diaInicioChave) return `A partir das ${formatarHora(new Date(evento.inicio))}`;
+  if (diaChave === diaFimChave) return `Até às ${formatarHora(new Date(evento.fim))}`;
+  return "Dia inteiro (contínuo)";
+}
+
+function criarCardElemento(evento, diaChave) {
   const situacao = situacaoTemporal(evento);
   const card = document.createElement("article");
   card.className = "card";
@@ -686,33 +787,47 @@ function criarCardElemento(evento) {
   if (situacao === "andamento") card.classList.add("card--em-andamento");
   if (situacao === "concluido") card.classList.add("card--concluido");
   if (evento.cancelado) card.classList.add("card--cancelado");
+  if (evento.conflito && situacao !== "concluido") card.classList.add("card--conflito");
 
-  const horario = evento.diaInteiro
-    ? "Dia inteiro"
-    : `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
+  const continuo = eventoEhContinuo(evento);
+  const { horaInicio, horaFim } = tempoCartaoPorDia(evento, diaChave);
 
   const badges = [];
+  if (situacao === "andamento") badges.push(`<span class="badge badge--agora">● Agora</span>`);
   badges.push(`<span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span>`);
+  if (continuo) {
+    badges.push(
+      `<span class="badge badge--continuo">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(new Date(evento.fim))}</span>`
+    );
+  }
   if (evento.recorrente) badges.push(`<span class="badge badge--recorrente">Recorrente</span>`);
-  if (situacao === "andamento") badges.push(`<span class="badge badge--andamento">Em andamento</span>`);
   if (situacao === "concluido") badges.push(`<span class="badge badge--concluido">Concluído</span>`);
-  if (evento.conflito) badges.push(`<span class="badge badge--conflito">Conflito de horário</span>`);
+  if (evento.conflito && situacao !== "concluido") {
+    badges.push(`<span class="badge badge--conflito">⚠ Conflito de horário</span>`);
+  }
 
   card.innerHTML = `
     ${evento.cancelado ? `<div class="card__banner-cancelado">⚠ Compromisso cancelado</div>` : ""}
-    <div class="card__topo">
-      <span class="card__horario">${horario}</span>
-      <span class="card__badges">${badges.join("")}</span>
-    </div>
-    <h3 class="card__titulo">${escapeHtml(evento.titulo)}</h3>
-    <div class="card__meta">
-      <span>⏱ ${duracaoLegivel(evento)}</span>
-      ${evento.local ? `<span>📍 ${escapeHtml(evento.local)}</span>` : ""}
-    </div>
-    ${evento.descricao ? `<p class="card__descricao">${escapeHtml(evento.descricao)}</p>` : ""}
-    <div class="card__rodape">
-      ${evento.link ? `<a class="card__link" href="${escapeAttr(evento.link)}" target="_blank" rel="noopener">🔗 Entrar na reunião</a>` : ""}
-      <button class="card__detalhes-btn" type="button" data-abrir-detalhes="${escapeAttr(evento.id)}">Ver detalhes</button>
+    <div class="card__linha">
+      <div class="card__tempo">
+        <span class="card__hora-inicio">${horaInicio}</span>
+        <span class="card__hora-fim">${horaFim}</span>
+      </div>
+      <div class="card__conteudo">
+        <div class="card__titulo-linha">
+          <h3 class="card__titulo">${escapeHtml(evento.titulo)}</h3>
+          <span class="card__badges">${badges.join("")}</span>
+        </div>
+        <div class="card__meta">
+          <span>⏱ ${duracaoLegivel(evento)}</span>
+          ${evento.local ? `<span>📍 ${escapeHtml(evento.local)}</span>` : ""}
+        </div>
+        ${evento.descricao ? `<p class="card__descricao">${escapeHtml(evento.descricao)}</p>` : ""}
+        <div class="card__rodape">
+          ${evento.link ? `<a class="card__link" href="${escapeAttr(evento.link)}" target="_blank" rel="noopener">🔗 Entrar na reunião</a>` : ""}
+          <button class="card__detalhes-btn" type="button" data-abrir-detalhes="${escapeAttr(evento.id)}">Ver detalhes</button>
+        </div>
+      </div>
     </div>
   `;
 
@@ -755,11 +870,34 @@ function preencherTimeline(filtrados) {
 
     const listaEl = document.createElement("div");
     listaEl.className = "timeline__lista";
-    grupo.eventos.forEach((evento) => listaEl.appendChild(criarCardElemento(evento)));
+    grupo.eventos.forEach(({ evento, diaChave }) => listaEl.appendChild(criarCardElemento(evento, diaChave)));
     grupoEl.appendChild(listaEl);
 
     container.appendChild(grupoEl);
   });
+}
+
+// Placeholders animados exibidos apenas na primeira carga (sem cache local
+// disponível ainda) para reduzir a sensação de espera enquanto o ICS é buscado.
+function mostrarEsqueletos(quantidade) {
+  const container = document.getElementById("timeline");
+  const vazio = document.getElementById("timeline-vazio");
+  vazio.hidden = true;
+  container.innerHTML = "";
+
+  for (let i = 0; i < quantidade; i++) {
+    const card = document.createElement("div");
+    card.className = "skeleton-card";
+    card.innerHTML = `
+      <div class="skeleton-linha skeleton-card__tempo"></div>
+      <div class="skeleton-card__conteudo">
+        <div class="skeleton-linha skeleton-card__titulo"></div>
+        <div class="skeleton-linha skeleton-card__meta"></div>
+        <div class="skeleton-linha skeleton-card__descricao"></div>
+      </div>
+    `;
+    container.appendChild(card);
+  }
 }
 
 /* ==========================================================================
@@ -770,25 +908,38 @@ function renderizarDashboard(filtrados) {
   const agora = new Date();
   const hojeInicio = inicioDoDia(agora).getTime();
   const hojeFim = fimDoDia(agora).getTime();
-  const semanaInicio = segundaDaSemana(agora).getTime();
-  const semanaFim = domingoDaSemana(agora).getTime();
 
-  let contagemHoje = 0;
-  let contagemSemana = 0;
   let contagemAndamento = 0;
+  let contagemProximos = 0;
+  let contagemConcluidos = 0;
+  let conflitosAtivos = 0;
 
   state.eventos.forEach((evento) => {
     const inicio = new Date(evento.inicio).getTime();
     const fim = new Date(evento.fim).getTime();
-    if (inicio <= hojeFim && fim >= hojeInicio) contagemHoje++;
-    if (inicio <= semanaFim && fim >= semanaInicio) contagemSemana++;
-    if (situacaoTemporal(evento) === "andamento") contagemAndamento++;
+    if (inicio <= hojeFim && fim >= hojeInicio) {
+      const situacao = situacaoTemporal(evento);
+      if (situacao === "andamento") contagemAndamento++;
+      else if (situacao === "futuro") contagemProximos++;
+      else if (situacao === "concluido") contagemConcluidos++;
+    }
+    if (evento.conflito && situacaoTemporal(evento) !== "concluido") conflitosAtivos++;
   });
 
-  document.getElementById("stat-total").textContent = filtrados.length;
-  document.getElementById("stat-hoje").textContent = contagemHoje;
-  document.getElementById("stat-semana").textContent = contagemSemana;
   document.getElementById("stat-andamento").textContent = contagemAndamento;
+  document.getElementById("stat-proximos").textContent = contagemProximos;
+  document.getElementById("stat-concluidos").textContent = contagemConcluidos;
+
+  document.getElementById("page-title").textContent = PERIODO_TITULO[state.filtros.periodo] || "Agenda";
+
+  const alerta = document.getElementById("conflict-alert");
+  const detalhe = document.getElementById("conflict-alert-detalhe");
+  if (conflitosAtivos > 0) {
+    detalhe.textContent = `${conflitosAtivos} compromisso${conflitosAtivos === 1 ? "" : "s"} sobreposto${conflitosAtivos === 1 ? "" : "s"} na agenda.`;
+    alerta.hidden = false;
+  } else {
+    alerta.hidden = true;
+  }
 }
 
 /* ==========================================================================
@@ -796,6 +947,7 @@ function renderizarDashboard(filtrados) {
    ========================================================================== */
 
 const PERIODO_LABEL = { todos: "Todos", dia: "Hoje", semana: "Esta semana", mes: "Este mês" };
+const PERIODO_TITULO = { todos: "Agenda — todos os compromissos", dia: "Agenda de Hoje", semana: "Agenda da Semana", mes: "Agenda do Mês" };
 
 function sincronizarChipsPeriodo() {
   document.querySelectorAll("#periodo-group .chip").forEach((chip) => {
@@ -1046,24 +1198,35 @@ function abrirPainelDetalhes(eventoId) {
   elementoComFocoAntesDoPainel = document.activeElement;
 
   const situacao = situacaoTemporal(evento);
+  const continuo = eventoEhContinuo(evento);
   const horario = evento.diaInteiro
     ? "Dia inteiro"
     : `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
+  const dataHorarioTexto = continuo
+    ? `${formatarDataLonga(new Date(evento.inicio))} (${formatarHora(new Date(evento.inicio))}) até ${formatarDataLonga(new Date(evento.fim))} (${formatarHora(new Date(evento.fim))})`
+    : `${formatarDataLonga(new Date(evento.inicio))} — ${horario}`;
 
   const badges = [];
+  if (situacao === "andamento") badges.push(`<span class="badge badge--agora">● Agora</span>`);
   badges.push(`<span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span>`);
+  if (continuo) {
+    badges.push(
+      `<span class="badge badge--continuo">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(new Date(evento.fim))}</span>`
+    );
+  }
   if (evento.recorrente) badges.push(`<span class="badge badge--recorrente">Recorrente</span>`);
   if (evento.cancelado) badges.push(`<span class="badge badge--cancelado">Cancelado</span>`);
-  if (situacao === "andamento") badges.push(`<span class="badge badge--andamento">Em andamento</span>`);
   if (situacao === "concluido") badges.push(`<span class="badge badge--concluido">Concluído</span>`);
-  if (evento.conflito) badges.push(`<span class="badge badge--conflito">Conflito de horário</span>`);
+  if (evento.conflito && situacao !== "concluido") {
+    badges.push(`<span class="badge badge--conflito">⚠ Conflito de horário</span>`);
+  }
 
   document.getElementById("detail-panel-titulo").textContent = evento.titulo;
   document.getElementById("detail-panel-corpo").innerHTML = `
     <div class="detail-panel__badges">${badges.join("")}</div>
     <div class="detail-panel__linha">
       <span class="detail-panel__linha-rotulo">Data e horário</span>
-      <span class="detail-panel__linha-valor">${formatarDataLonga(new Date(evento.inicio))} — ${horario} (${duracaoLegivel(evento)})</span>
+      <span class="detail-panel__linha-valor">${dataHorarioTexto} (${duracaoLegivel(evento)})</span>
     </div>
     ${evento.local ? `<div class="detail-panel__linha"><span class="detail-panel__linha-rotulo">Local</span><span class="detail-panel__linha-valor">${escapeHtml(evento.local)}</span></div>` : ""}
     ${evento.descricao ? `<div class="detail-panel__linha"><span class="detail-panel__linha-rotulo">Descrição</span><span class="detail-panel__linha-valor">${escapeHtml(evento.descricao)}</span></div>` : ""}
@@ -1129,6 +1292,71 @@ function confirmarAcao(mensagem, titulo) {
     btnCancelar.addEventListener("click", aoCancelar);
     btnContinuar.addEventListener("click", aoContinuar);
   });
+}
+
+/* ==========================================================================
+   TEMA CLARO/ESCURO
+   ========================================================================== */
+
+const TEMA_STORAGE_KEY = "agendaSisd.tema";
+
+function sistemaPrefereTemaEscuro() {
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+// tema: "dark" | "light" | null (null = segue a preferência do sistema).
+function aplicarTema(tema) {
+  if (tema === "dark" || tema === "light") {
+    document.documentElement.setAttribute("data-theme", tema);
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+  }
+
+  const efetivoEscuro = tema ? tema === "dark" : sistemaPrefereTemaEscuro();
+
+  const btn = document.getElementById("btn-tema");
+  if (btn) btn.setAttribute("aria-pressed", String(efetivoEscuro));
+
+  const metaTema = document.getElementById("meta-theme-color");
+  if (metaTema) metaTema.setAttribute("content", efetivoEscuro ? "#0B2545" : "#061A35");
+}
+
+function alternarTema() {
+  const efetivoEscuro = document.documentElement.getAttribute("data-theme")
+    ? document.documentElement.getAttribute("data-theme") === "dark"
+    : sistemaPrefereTemaEscuro();
+  const novoTema = efetivoEscuro ? "light" : "dark";
+
+  aplicarTema(novoTema);
+  try {
+    localStorage.setItem(TEMA_STORAGE_KEY, novoTema);
+  } catch (e) {
+    /* ignora */
+  }
+}
+
+function inicializarTema() {
+  let salvo = null;
+  try {
+    salvo = localStorage.getItem(TEMA_STORAGE_KEY);
+  } catch (e) {
+    /* ignora */
+  }
+  aplicarTema(salvo);
+
+  // Sem preferência salva, acompanha mudanças ao vivo na preferência do
+  // sistema (ex.: o SO alterna para modo escuro ao anoitecer).
+  if (!salvo && window.matchMedia) {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+      let aindaSemPreferencia = true;
+      try {
+        aindaSemPreferencia = !localStorage.getItem(TEMA_STORAGE_KEY);
+      } catch (e) {
+        /* ignora */
+      }
+      if (aindaSemPreferencia) aplicarTema(null);
+    });
+  }
 }
 
 /* ==========================================================================
@@ -1210,6 +1438,10 @@ function renderizarTudo() {
 async function atualizarAgenda() {
   definirCarregando(true);
   limparMensagens();
+  // Só mostra o esqueleto na carga inicial (sem nada em tela ainda) — em
+  // atualizações seguintes é melhor manter os dados já exibidos até a
+  // resposta chegar, em vez de "piscar" a tela.
+  if (state.eventos.length === 0) mostrarEsqueletos(3);
 
   try {
     const icsTexto = await buscarIcsTexto();
@@ -1235,6 +1467,10 @@ async function atualizarAgenda() {
       state.ultimaAtualizacao = new Date(cache.savedAt);
       renderizarTudo();
       mostrarAvisoCache();
+    } else {
+      // Sem cache para exibir: substitui os esqueletos de carregamento pelo
+      // estado vazio real, em vez de deixá-los "girando" indefinidamente.
+      renderizarTudo();
     }
   } finally {
     definirCarregando(false);
@@ -1258,15 +1494,14 @@ const CATEGORIA_CORES_EXPORT = {
 // Cartão de exportação minimalista: mostra somente horário, título e
 // categoria (que já indica presencial/online/viagem). Sem descrição, link,
 // local ou duração — o dia/data já aparecem no cabeçalho de cada grupo.
-function construirCardExportacao(evento) {
+function construirCardExportacao(evento, diaChave) {
   const cores = CATEGORIA_CORES_EXPORT[evento.categoria] || CATEGORIA_CORES_EXPORT["pauta-presencial"];
   const corBorda = evento.cancelado ? "#C94B4B" : cores.borda;
   const div = document.createElement("div");
   div.style.cssText = `font-family:'Segoe UI', Arial, sans-serif; width:700px; padding:10px 16px; margin-bottom:8px; background:#fff; border:1px solid #DCE5EF; border-left:4px solid ${corBorda}; border-radius:8px;`;
 
-  const horario = evento.diaInteiro
-    ? "Dia inteiro"
-    : `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
+  const continuo = eventoEhContinuo(evento);
+  const horario = horarioResumoPorDia(evento, diaChave);
 
   // Pauta online: o link da reunião é informação essencial para participar,
   // então continua aparecendo mesmo no resumo minimalista.
@@ -1283,11 +1518,16 @@ function construirCardExportacao(evento) {
   div.innerHTML = `
     ${bannerCancelado}
     <div style="display:flex;align-items:center;gap:14px;">
-      <div style="min-width:88px;flex-shrink:0;font-size:12.5px;font-weight:700;color:#174D83;">${horario}</div>
+      <div style="min-width:118px;flex-shrink:0;font-size:12.5px;font-weight:700;color:#174D83;">${horario}</div>
       <div style="${estiloTitulo}">${escapeHtml(evento.titulo)}</div>
       <span style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:4px 10px;border-radius:999px;background:${cores.fundo};color:${cores.texto};white-space:nowrap;">${CATEGORIA_LABEL[evento.categoria] || ""}</span>
     </div>
-    ${mostrarLink ? `<div style="margin-top:6px;padding-left:102px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
+    ${
+      continuo
+        ? `<div style="margin-top:4px;padding-left:132px;font-size:10.5px;color:#607086;">Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(new Date(evento.fim))}</div>`
+        : ""
+    }
+    ${mostrarLink ? `<div style="margin-top:6px;padding-left:132px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
   `;
 
   return div;
@@ -1408,8 +1648,8 @@ async function exportarPDF() {
     pdf.text(grupo.rotulo, margin, cursorY + 4);
     cursorY += 8;
 
-    for (const evento of grupo.eventos) {
-      const cardEl = construirCardExportacao(evento);
+    for (const { evento, diaChave } of grupo.eventos) {
+      const cardEl = construirCardExportacao(evento, diaChave);
       const canvas = await renderizarCanvasElemento(cardEl, 3);
       const imgWidthMm = usableWidth;
       const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width;
@@ -1479,8 +1719,8 @@ async function exportarJPEG() {
     dataEl.textContent = grupo.rotulo;
     unidades.push(dataEl);
 
-    grupo.eventos.forEach((evento) => {
-      const card = construirCardExportacao(evento);
+    grupo.eventos.forEach(({ evento, diaChave }) => {
+      const card = construirCardExportacao(evento, diaChave);
       card.style.width = "100%";
       unidades.push(card);
     });
@@ -1565,12 +1805,13 @@ function construirTextoAgenda() {
 
   grupos.forEach((grupo) => {
     linhas.push(grupo.rotulo.toUpperCase());
-    grupo.eventos.forEach((evento) => {
-      const horario = evento.diaInteiro
-        ? "Dia inteiro"
-        : `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
+    grupo.eventos.forEach(({ evento, diaChave }) => {
+      const horario = horarioResumoPorDia(evento, diaChave);
       const aviso = evento.cancelado ? "  [⚠ CANCELADO]" : "";
-      linhas.push(`  ${horario} | ${CATEGORIA_LABEL[evento.categoria]} | ${evento.titulo}${aviso}`);
+      const continuo = eventoEhContinuo(evento)
+        ? `  [vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(new Date(evento.fim))}]`
+        : "";
+      linhas.push(`  ${horario} | ${CATEGORIA_LABEL[evento.categoria]} | ${evento.titulo}${aviso}${continuo}`);
       if (evento.categoria === "pauta-online" && evento.link) {
         linhas.push(`      Link: ${evento.link}`);
       }
@@ -1615,6 +1856,9 @@ function configurarChipGroup(seletor, callback, multipla) {
 }
 
 function inicializarInterface() {
+  inicializarTema();
+  document.getElementById("btn-tema").addEventListener("click", alternarTema);
+
   document.getElementById("btn-abrir-outlook").href = CALENDAR_HTML_URL;
 
   document.getElementById("btn-atualizar").addEventListener("click", () => atualizarAgenda());

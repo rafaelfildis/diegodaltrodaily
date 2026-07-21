@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Agenda Diego Daltro - SISD/SESAB</title>
 <meta name="description" content="Agenda institucional com sincronização automática do calendário Outlook/Microsoft 365." />
-<meta name="theme-color" content="#061A35" />
+<meta name="theme-color" content="#061A35" id="meta-theme-color" />
+<script>
+  // Aplica o tema salvo antes da primeira pintura, evitando o "flash" de
+  // tela clara ao carregar com o modo escuro já escolhido anteriormente.
+  (function () {
+    try {
+      var tema = localStorage.getItem("agendaSisd.tema");
+      if (tema === "dark" || tema === "light") {
+        document.documentElement.setAttribute("data-theme", tema);
+      }
+    } catch (e) {
+      /* ignora */
+    }
+  })();
+</script>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -42,6 +56,10 @@
     </div>
 
     <div class="topbar__actions">
+      <button id="btn-tema" class="icon-btn topbar__theme-btn" type="button" aria-label="Alternar entre tema claro e escuro" aria-pressed="false">
+        <svg class="icone-tema icone-tema--lua" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        <svg class="icone-tema icone-tema--sol" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      </button>
       <button id="btn-atualizar" class="btn btn--primary" type="button">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
         <span class="btn__label">Atualizar</span>
@@ -124,22 +142,39 @@
         </ol>
       </nav>
 
+      <h2 class="page-title" id="page-title">Agenda de Hoje</h2>
+
+      <div id="conflict-alert" class="conflict-alert" role="alert" hidden>
+        <span class="conflict-alert__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+        </span>
+        <div class="conflict-alert__texto">
+          <strong>Conflito de horário detectado</strong>
+          <span id="conflict-alert-detalhe"></span>
+        </div>
+      </div>
+
       <section class="dashboard" aria-label="Indicadores da agenda">
-        <div class="stat-card">
-          <span class="stat-card__valor" id="stat-total">0</span>
-          <span class="stat-card__rotulo">Compromissos no filtro</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__valor" id="stat-hoje">0</span>
-          <span class="stat-card__rotulo">Hoje</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-card__valor" id="stat-semana">0</span>
-          <span class="stat-card__rotulo">Esta semana</span>
-        </div>
-        <div class="stat-card">
+        <div class="stat-card stat-card--andamento">
+          <span class="stat-card__icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </span>
           <span class="stat-card__valor" id="stat-andamento">0</span>
           <span class="stat-card__rotulo">Em andamento</span>
+        </div>
+        <div class="stat-card stat-card--proximos">
+          <span class="stat-card__icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          </span>
+          <span class="stat-card__valor" id="stat-proximos">0</span>
+          <span class="stat-card__rotulo">Próximos</span>
+        </div>
+        <div class="stat-card stat-card--concluidos">
+          <span class="stat-card__icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </span>
+          <span class="stat-card__valor" id="stat-concluidos">0</span>
+          <span class="stat-card__rotulo">Concluídos</span>
         </div>
       </section>
 
@@ -189,7 +224,8 @@
       <section class="timeline-wrap" id="vista-timeline">
         <div id="timeline" class="timeline" aria-live="polite"></div>
         <div id="timeline-vazio" class="timeline-vazio" hidden>
-          Nenhum compromisso encontrado para os filtros selecionados.
+          <svg class="timeline-vazio__icone" viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line><path d="m9.5 15.5 2-2 2 2 2-2"></path></svg>
+          <p>Nenhum compromisso encontrado para os filtros selecionados.</p>
         </div>
       </section>
 
