@@ -60,14 +60,14 @@
         <svg class="icone-tema icone-tema--lua" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
         <svg class="icone-tema icone-tema--sol" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
       </button>
-      <button id="btn-atualizar" class="btn btn--primary" type="button">
+      <button id="btn-atualizar" class="btn btn--ghost-dark" type="button">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
         <span class="btn__label">Atualizar</span>
       </button>
-      <a id="btn-abrir-outlook" class="btn btn--ghost-dark" href="#" target="_blank" rel="noopener">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-        <span class="btn__label">Abrir no Outlook</span>
-      </a>
+      <button id="btn-abrir-export" class="btn btn--primary" type="button">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span class="btn__label">Exportar agenda</span>
+      </button>
     </div>
   </header>
 
@@ -111,20 +111,29 @@
 
         <div class="filters__group">
           <span class="filters__label" id="label-categorias">Categorias</span>
-          <div class="chip-group" id="categoria-group" role="group" aria-labelledby="label-categorias">
-            <button class="chip chip--categoria" data-categoria="viagem" type="button">✈ Viagens</button>
-            <button class="chip chip--categoria" data-categoria="mestrado" type="button">🎓 Mestrado</button>
-            <button class="chip chip--categoria" data-categoria="pauta-online" type="button">💻 Pauta online</button>
-            <button class="chip chip--categoria" data-categoria="pauta-presencial" type="button">🏛 Pauta presencial</button>
-          </div>
+          <div class="cat-list" id="categoria-lista" role="group" aria-labelledby="label-categorias"></div>
         </div>
 
-        <div class="filters__group filters__group--inline">
+        <div class="filters__group">
+          <span class="filters__label">Exibição</span>
           <label class="switch">
             <input type="checkbox" id="mostrar-concluidos" checked />
             <span class="switch__track"><span class="switch__thumb"></span></span>
             <span>Mostrar concluídos</span>
           </label>
+        </div>
+
+        <div class="sync-box">
+          <div class="sync-box__titulo">Sincronização</div>
+          <div class="sync-box__status">
+            <span class="sync-box__dot" aria-hidden="true"></span>
+            Outlook / Microsoft 365
+          </div>
+          <div class="sync-box__updated">Última atualização: <strong id="ultima-atualizacao">—</strong></div>
+          <a id="btn-abrir-outlook" class="sync-box__link" href="#" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+            Abrir no Outlook
+          </a>
         </div>
       </div>
 
@@ -142,7 +151,22 @@
         </ol>
       </nav>
 
-      <h2 class="page-title" id="page-title">Agenda de Hoje</h2>
+      <div class="page-header">
+        <div class="page-header__titles">
+          <h2 class="page-title" id="page-title">Agenda de Hoje</h2>
+          <p class="page-subtitle" id="page-subtitle"></p>
+        </div>
+        <div class="view-toggle" role="group" aria-label="Modo de visualização">
+          <button class="view-toggle__btn is-active" id="btn-vista-timeline" data-vista="timeline" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            Linha do tempo
+          </button>
+          <button class="view-toggle__btn" id="btn-vista-tabela" data-vista="tabela" type="button">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line></svg>
+            Tabela
+          </button>
+        </div>
+      </div>
 
       <div id="conflict-alert" class="conflict-alert" role="alert" hidden>
         <span class="conflict-alert__icon" aria-hidden="true">
@@ -155,6 +179,13 @@
       </div>
 
       <section class="dashboard" aria-label="Indicadores da agenda">
+        <div class="stat-card stat-card--total">
+          <span class="stat-card__icone" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11H3v10h6M9 11V3h6v8M9 11h6M15 11h6v10h-6M9 21h6"></path></svg>
+          </span>
+          <span class="stat-card__valor" id="stat-total">0</span>
+          <span class="stat-card__rotulo">Compromissos</span>
+        </div>
         <div class="stat-card stat-card--andamento">
           <span class="stat-card__icone" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -197,9 +228,6 @@
             Exibindo dados salvos localmente — podem estar desatualizados.
           </span>
         </div>
-        <div class="status-bar__updated">
-          Última atualização: <strong id="ultima-atualizacao">—</strong>
-        </div>
       </div>
 
       <section class="active-filters" id="active-filters" aria-live="polite" hidden>
@@ -209,16 +237,6 @@
 
       <section class="content-toolbar">
         <div class="filters__summary" id="filtros-resumo">0 compromissos</div>
-        <div class="view-toggle" role="group" aria-label="Modo de visualização">
-          <button class="view-toggle__btn is-active" id="btn-vista-timeline" data-vista="timeline" type="button">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
-            Linha do tempo
-          </button>
-          <button class="view-toggle__btn" id="btn-vista-tabela" data-vista="tabela" type="button">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="9" x2="9" y2="21"></line></svg>
-            Tabela
-          </button>
-        </div>
       </section>
 
       <section class="timeline-wrap" id="vista-timeline">
@@ -239,6 +257,7 @@
                 <th scope="col"><button class="th-sort" data-sort="titulo" type="button">Título <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
                 <th scope="col"><button class="th-sort" data-sort="categoria" type="button">Categoria <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
                 <th scope="col"><button class="th-sort" data-sort="local" type="button">Local <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
+                <th scope="col">Participantes</th>
                 <th scope="col"><button class="th-sort" data-sort="status" type="button">Status <span class="th-sort__icon" aria-hidden="true">↕</span></button></th>
                 <th scope="col"><span class="sr-only">Detalhes</span></th>
               </tr>
@@ -256,20 +275,57 @@
     </main>
   </div>
 
-  <section class="export-bar" aria-label="Exportação">
-    <div class="export-bar__group">
-      <span class="filters__label" id="label-export-formato">Formato</span>
-      <div class="chip-group" id="export-formato-group" role="group" aria-labelledby="label-export-formato">
-        <button class="chip is-active" data-formato="a4" type="button">A4</button>
-        <button class="chip" data-formato="mobile" type="button">Mobile vertical</button>
+  <div id="export-backdrop" class="export-overlay" role="dialog" aria-modal="true" aria-labelledby="export-titulo" hidden>
+    <div class="export-rail">
+      <div class="export-rail__header">
+        <div class="export-rail__title" id="export-titulo">Exportar agenda</div>
+        <div class="export-rail__sub">Pré-visualize e baixe a extração</div>
+      </div>
+      <div class="export-rail__body">
+        <div>
+          <span class="filters__label" id="label-export-formato">Formato</span>
+          <div class="opt-group" id="export-formato-group" role="group" aria-labelledby="label-export-formato">
+            <button class="opt-card is-active" data-formato="mobile" type="button">
+              <span class="opt-card__label">Mobile vertical (WhatsApp)</span>
+              <span class="opt-card__desc">Imagem única, ideal para enviar por mensagem</span>
+            </button>
+            <button class="opt-card" data-formato="a4" type="button">
+              <span class="opt-card__label">A4 retrato</span>
+              <span class="opt-card__desc">Para impressão ou anexo em e-mail</span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <span class="filters__label" id="label-export-densidade">Conteúdo por compromisso</span>
+          <div class="opt-group" id="export-densidade-group" role="group" aria-labelledby="label-export-densidade">
+            <button class="opt-card is-active" data-densidade="completo" type="button">
+              <span class="opt-card__label">Completo — com descrição e participantes</span>
+            </button>
+            <button class="opt-card" data-densidade="compromissos" type="button">
+              <span class="opt-card__label">Compromissos — sem descrição</span>
+            </button>
+            <button class="opt-card" data-densidade="resumo" type="button">
+              <span class="opt-card__label">Resumo — só título e horário</span>
+            </button>
+          </div>
+        </div>
+        <div class="export-rail__nota">
+          Respeita os filtros ativos. <strong id="export-resumo-contagem">0 compromissos</strong> serão incluídos.
+        </div>
+      </div>
+      <div class="export-rail__footer">
+        <div class="export-rail__botoes">
+          <button id="btn-exportar-jpeg" class="btn btn--secondary" type="button">Baixar JPEG</button>
+          <button id="btn-exportar-pdf" class="btn btn--primary" type="button">Baixar PDF</button>
+        </div>
+        <button id="btn-exportar-texto" class="btn btn--ghost" type="button">Exportar em texto</button>
+        <button id="btn-fechar-export" class="btn btn--ghost" type="button">Fechar</button>
       </div>
     </div>
-    <div class="export-bar__actions">
-      <button id="btn-exportar-pdf" class="btn btn--secondary" type="button">Exportar PDF</button>
-      <button id="btn-exportar-jpeg" class="btn btn--secondary" type="button">Exportar JPEG</button>
-      <button id="btn-exportar-texto" class="btn btn--secondary" type="button">Exportar Texto</button>
+    <div class="export-stage">
+      <div id="export-preview" class="export-preview"></div>
     </div>
-  </section>
+  </div>
 
   <footer class="app-footer">
     <p>Agenda Diego Daltro — SISD/SESAB — dados sincronizados automaticamente a cada 15 minutos. Fuso horário: America/Bahia.</p>

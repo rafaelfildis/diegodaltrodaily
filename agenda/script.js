@@ -49,7 +49,8 @@ const state = {
     dataFim: null, // "YYYY-MM-DD" ou null
   },
   exportacao: {
-    formato: "a4", // a4 | mobile
+    formato: "mobile", // a4 | mobile
+    densidade: "completo", // completo | compromissos | resumo
   },
   ui: {
     vista: "timeline", // timeline | tabela
@@ -79,6 +80,9 @@ DTEND:20260720T130000Z
 SUMMARY:Reunião de alinhamento (Teams)
 DESCRIPTION:Pauta online via Microsoft Teams para discutir indicadores.
 LOCATION:Microsoft Teams
+ORGANIZER;CN=Diego Daltro:mailto:diego@saude.ba.gov.br
+ATTENDEE;CN=Ana Ribeiro:mailto:ana@saude.ba.gov.br
+ATTENDEE;CN=Marcos Lima:mailto:marcos@saude.ba.gov.br
 END:VEVENT
 BEGIN:VEVENT
 UID:demo-2@agenda
@@ -88,6 +92,8 @@ DTEND;VALUE=DATE:20260725
 SUMMARY:Viagem a Brasília
 DESCRIPTION:Embarque às 7h, desembarque previsto às 10h.
 LOCATION:Aeroporto de Brasília
+ATTENDEE;CN=Diego Daltro:mailto:diego@saude.ba.gov.br
+ATTENDEE;CN=Assessoria:mailto:assessoria@saude.ba.gov.br
 END:VEVENT
 BEGIN:VEVENT
 UID:demo-3@agenda
@@ -363,6 +369,61 @@ function lerUrl(icalEvent, descricao, local) {
   return extrairPrimeiraUrl(descricao) || extrairPrimeiraUrl(local) || "";
 }
 
+// Lê os participantes (ATTENDEE) e o organizador (ORGANIZER) do evento.
+// Prioriza o nome amigável (parâmetro CN); na ausência, usa a parte local do
+// e-mail (antes do @). Calendários publicados do Outlook às vezes omitem
+// ATTENDEE por privacidade — nesse caso a lista volta vazia e a interface
+// simplesmente não mostra a linha de participantes.
+function lerParticipantes(icalEvent) {
+  const nomes = [];
+  const vistos = new Set();
+
+  function nomeDe(prop) {
+    if (!prop) return "";
+    let cn = "";
+    try {
+      cn = prop.getParameter("cn") || "";
+    } catch (e) {
+      /* ignora */
+    }
+    if (cn) return String(cn).trim();
+    // Sem CN: extrai a parte local de "mailto:fulano@dominio".
+    let valor = "";
+    try {
+      valor = String(prop.getFirstValue() || "");
+    } catch (e) {
+      valor = "";
+    }
+    const semMailto = valor.replace(/^mailto:/i, "");
+    const local = semMailto.split("@")[0];
+    return local ? local.replace(/[._]+/g, " ").trim() : "";
+  }
+
+  function adicionar(nome) {
+    const limpo = (nome || "").trim();
+    if (!limpo) return;
+    const chave = normalizarTexto(limpo);
+    if (vistos.has(chave)) return;
+    vistos.add(chave);
+    nomes.push(limpo);
+  }
+
+  try {
+    const organizador = icalEvent.component.getFirstProperty("organizer");
+    adicionar(nomeDe(organizador));
+  } catch (e) {
+    /* ignora */
+  }
+
+  try {
+    icalEvent.component.getAllProperties("attendee").forEach((prop) => adicionar(nomeDe(prop)));
+  } catch (e) {
+    /* ignora */
+  }
+
+  return nomes;
+}
+
 function construirOcorrencia(icalEvent, startTime, endTime, recorrente) {
   const diaInteiro = !!startTime.isDate;
   const inicioJS = startTime.toJSDate();
@@ -372,6 +433,7 @@ function construirOcorrencia(icalEvent, startTime, endTime, recorrente) {
   const descricao = icalEvent.description || "";
   const local = icalEvent.location || "";
   const link = lerUrl(icalEvent, descricao, local);
+  const participantes = lerParticipantes(icalEvent);
 
   let statusRaw = "";
   try {
@@ -394,6 +456,7 @@ function construirOcorrencia(icalEvent, startTime, endTime, recorrente) {
     diaInteiro,
     local,
     link,
+    participantes,
     categoria: null,
     categoriasIcs,
     status: mapStatus(statusRaw),
@@ -636,23 +699,27 @@ function eventoNoIntervaloDeData(evento, dataInicio, dataFim) {
   return inicioEvento <= fimFiltro && fimEvento >= inicioFiltro;
 }
 
+// Verifica se o evento passa no termo de busca (título, descrição, local e
+// participantes). Termo vazio passa sempre.
+function passaBusca(evento) {
+  const buscaNormalizada = normalizarTexto(state.filtros.busca);
+  if (!buscaNormalizada) return true;
+  const alvo = normalizarTexto(
+    `${evento.titulo} ${evento.descricao} ${evento.local} ${(evento.participantes || []).join(" ")}`
+  );
+  return alvo.includes(buscaNormalizada);
+}
+
 function obterEventosFiltrados() {
-  const { periodo, categorias, busca, mostrarConcluidos, dataInicio, dataFim } = state.filtros;
-  const buscaNormalizada = normalizarTexto(busca);
+  const { periodo, categorias, mostrarConcluidos, dataInicio, dataFim } = state.filtros;
 
   return state.eventos.filter((evento) => {
     // Nenhuma categoria marcada = nenhum filtro de categoria ativo (mostra tudo).
     if (categorias.size > 0 && !categorias.has(evento.categoria)) return false;
     if (!eventoNoPeriodo(evento, periodo)) return false;
     if (!eventoNoIntervaloDeData(evento, dataInicio, dataFim)) return false;
-
     if (!mostrarConcluidos && situacaoTemporal(evento) === "concluido") return false;
-
-    if (buscaNormalizada) {
-      const alvo = normalizarTexto(`${evento.titulo} ${evento.descricao} ${evento.local}`);
-      if (!alvo.includes(buscaNormalizada)) return false;
-    }
-
+    if (!passaBusca(evento)) return false;
     return true;
   });
 }
@@ -760,6 +827,15 @@ function formatarDataCurta(date) {
   }).format(date);
 }
 
+// Resumo curto da lista de participantes: até 2 nomes por extenso; a partir
+// de 3, mostra os dois primeiros e "+N".
+function participantesResumo(evento) {
+  const p = evento.participantes || [];
+  if (p.length === 0) return "";
+  if (p.length <= 2) return p.join(", ");
+  return `${p[0]}, ${p[1]} +${p.length - 2}`;
+}
+
 // Horário exibido no bloco de tempo do cartão (linha do tempo), ajustado ao
 // dia específico dentro do intervalo — nos dias intermediários e no dia
 // final de um compromisso de vários dias, o horário "bruto" de início/fim
@@ -828,12 +904,15 @@ function criarCardElemento(evento, diaChave) {
     badges.push(`<span class="badge badge--conflito">⚠ Conflito de horário</span>`);
   }
 
+  const resumoPart = participantesResumo(evento);
+
   card.innerHTML = `
     ${evento.cancelado ? `<div class="card__banner-cancelado">⚠ Compromisso cancelado</div>` : ""}
     <div class="card__linha">
       <div class="card__tempo">
         <span class="card__hora-inicio">${horaInicio}</span>
         <span class="card__hora-fim">${horaFim}</span>
+        <span class="card__duracao">⏱ ${duracaoLegivel(evento)}</span>
       </div>
       <div class="card__conteudo">
         <div class="card__titulo-linha">
@@ -841,8 +920,8 @@ function criarCardElemento(evento, diaChave) {
           <span class="card__badges">${badges.join("")}</span>
         </div>
         <div class="card__meta">
-          <span>⏱ ${duracaoLegivel(evento)}</span>
           ${evento.local ? `<span>📍 ${escapeHtml(evento.local)}</span>` : ""}
+          ${resumoPart ? `<span>👥 ${escapeHtml(resumoPart)}</span>` : ""}
         </div>
         ${evento.descricao ? `<p class="card__descricao">${escapeHtml(evento.descricao)}</p>` : ""}
         <div class="card__rodape">
@@ -948,11 +1027,13 @@ function renderizarDashboard(filtrados) {
     if (evento.conflito && situacaoTemporal(evento) !== "concluido") conflitosAtivos++;
   });
 
+  document.getElementById("stat-total").textContent = filtrados.length;
   document.getElementById("stat-andamento").textContent = contagemAndamento;
   document.getElementById("stat-proximos").textContent = contagemProximos;
   document.getElementById("stat-concluidos").textContent = contagemConcluidos;
 
   document.getElementById("page-title").textContent = PERIODO_TITULO[state.filtros.periodo] || "Agenda";
+  document.getElementById("page-subtitle").textContent = subtituloDaPagina();
 
   const alerta = document.getElementById("conflict-alert");
   const detalhe = document.getElementById("conflict-alert-detalhe");
@@ -971,15 +1052,77 @@ function renderizarDashboard(filtrados) {
 const PERIODO_LABEL = { todos: "Todos", dia: "Hoje", semana: "Esta semana", mes: "Este mês" };
 const PERIODO_TITULO = { todos: "Agenda — todos os compromissos", dia: "Agenda de Hoje", semana: "Agenda da Semana", mes: "Agenda do Mês" };
 
+// Pontos coloridos por categoria (mesmas cores dos badges), usados na lista
+// de categorias da sidebar.
+const CATEGORIA_COR = {
+  viagem: "#174D83",
+  mestrado: "#2E8B68",
+  "pauta-online": "#55A9E8",
+  "pauta-presencial": "#D99A2B",
+};
+
+function subtituloDaPagina() {
+  const { periodo, dataInicio, dataFim } = state.filtros;
+  if (dataInicio || dataFim) {
+    const ini = dataInicio ? formatarDataLonga(new Date(`${dataInicio}T12:00:00${offsetBahia()}`)) : "início";
+    const fim = dataFim ? formatarDataLonga(new Date(`${dataFim}T12:00:00${offsetBahia()}`)) : "hoje";
+    return `De ${ini} até ${fim}`;
+  }
+  const agora = new Date();
+  if (periodo === "dia") return capitalizar(formatarDataLonga(agora));
+  if (periodo === "semana") {
+    return `${formatarDataCurta(segundaDaSemana(agora))} a ${formatarDataCurta(domingoDaSemana(agora))} · semana atual`;
+  }
+  if (periodo === "mes") {
+    return capitalizar(
+      new Intl.DateTimeFormat("pt-BR", { timeZone: DISPLAY_TIMEZONE, month: "long", year: "numeric" }).format(agora)
+    );
+  }
+  return "Todos os compromissos sincronizados do Outlook / Microsoft 365";
+}
+
+function capitalizar(txt) {
+  return txt ? txt.charAt(0).toUpperCase() + txt.slice(1) : txt;
+}
+
 function sincronizarChipsPeriodo() {
   document.querySelectorAll("#periodo-group .chip").forEach((chip) => {
     chip.classList.toggle("is-active", chip.dataset.periodo === state.filtros.periodo);
   });
 }
 
-function sincronizarChipsCategoria() {
-  document.querySelectorAll("#categoria-group .chip").forEach((chip) => {
-    chip.classList.toggle("is-active", state.filtros.categorias.has(chip.dataset.categoria));
+// Renderiza a lista de categorias na sidebar com um ponto colorido, o rótulo
+// e a contagem de compromissos daquela categoria (respeitando os demais
+// filtros ativos, exceto o próprio filtro de categoria — assim os números
+// indicam quantos há disponíveis em cada uma).
+function renderizarCategorias() {
+  const container = document.getElementById("categoria-lista");
+  if (!container) return;
+
+  const baseContagem = state.eventos.filter(
+    (evento) =>
+      eventoNoPeriodo(evento, state.filtros.periodo) &&
+      eventoNoIntervaloDeData(evento, state.filtros.dataInicio, state.filtros.dataFim) &&
+      (state.filtros.mostrarConcluidos || situacaoTemporal(evento) !== "concluido") &&
+      passaBusca(evento)
+  );
+
+  const contar = (cat) => baseContagem.filter((e) => e.categoria === cat).length;
+
+  container.innerHTML = "";
+  Object.keys(CATEGORIA_LABEL).forEach((cat) => {
+    const ativo = state.filtros.categorias.has(cat);
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cat-list__item" + (ativo ? " is-active" : "");
+    btn.dataset.categoria = cat;
+    btn.setAttribute("aria-pressed", String(ativo));
+    btn.innerHTML = `
+      <span class="cat-list__dot" style="background:${CATEGORIA_COR[cat]};"></span>
+      <span class="cat-list__label">${CATEGORIA_LABEL[cat]}</span>
+      <span class="cat-list__count">${contar(cat)}</span>
+    `;
+    container.appendChild(btn);
   });
 }
 
@@ -1015,7 +1158,6 @@ function limparTodosFiltros() {
   document.getElementById("mostrar-concluidos").checked = true;
   limparFiltroDeData();
   sincronizarChipsPeriodo();
-  sincronizarChipsCategoria();
   renderizarConteudo();
 }
 
@@ -1040,7 +1182,6 @@ function renderizarFiltrosAtivos() {
       label: CATEGORIA_LABEL[categoria],
       remover: () => {
         state.filtros.categorias.delete(categoria);
-        sincronizarChipsCategoria();
       },
     });
   });
@@ -1145,7 +1286,7 @@ function preencherTabela(filtrados) {
 
   if (pagina.length === 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td colspan="7" style="text-align:center;color:var(--color-text-secondary);padding:24px;">Nenhum compromisso encontrado para os filtros selecionados.</td>`;
+    tr.innerHTML = `<td colspan="8" style="text-align:center;color:var(--color-text-secondary);padding:24px;">Nenhum compromisso encontrado para os filtros selecionados.</td>`;
     corpo.appendChild(tr);
   }
 
@@ -1167,6 +1308,7 @@ function preencherTabela(filtrados) {
       <td class="td-titulo">${escapeHtml(evento.titulo)}</td>
       <td><span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span></td>
       <td class="td-local">${escapeHtml(evento.local || "—")}</td>
+      <td class="td-participantes">${escapeHtml(participantesResumo(evento) || "—")}</td>
       <td>${rotuloStatus(evento)}</td>
       <td><button class="btn btn--tiny-outline" type="button" data-abrir-detalhes="${escapeAttr(evento.id)}">Detalhes</button></td>
     `;
@@ -1197,14 +1339,23 @@ function atualizarVisibilidadeVista() {
 
 function renderizarConteudo() {
   const filtrados = obterEventosFiltrados();
-  document.getElementById("filtros-resumo").textContent =
-    `${filtrados.length} compromisso${filtrados.length === 1 ? "" : "s"}`;
+  const resumo = `${filtrados.length} compromisso${filtrados.length === 1 ? "" : "s"}`;
+  document.getElementById("filtros-resumo").textContent = resumo;
+  const resumoExport = document.getElementById("export-resumo-contagem");
+  if (resumoExport) resumoExport.textContent = resumo;
 
   preencherTimeline(filtrados);
   preencherTabela(filtrados);
   renderizarDashboard(filtrados);
+  renderizarCategorias();
   renderizarFiltrosAtivos();
   atualizarVisibilidadeVista();
+
+  // Mantém a pré-visualização de exportação sincronizada quando o overlay
+  // estiver aberto (os filtros afetam o que será exportado).
+  if (!document.getElementById("export-backdrop").hidden) {
+    renderizarPreviewExport(filtrados);
+  }
 }
 
 /* ==========================================================================
@@ -1257,6 +1408,7 @@ function abrirPainelDetalhes(eventoId) {
       <span class="detail-panel__linha-valor">${dataHorarioTexto} (${duracaoLegivel(evento)})</span>
     </div>
     ${evento.local ? `<div class="detail-panel__linha"><span class="detail-panel__linha-rotulo">Local</span><span class="detail-panel__linha-valor">${escapeHtml(evento.local)}</span></div>` : ""}
+    ${(evento.participantes || []).length ? `<div class="detail-panel__linha"><span class="detail-panel__linha-rotulo">Participantes</span><span class="detail-panel__linha-valor">${escapeHtml(evento.participantes.join(", "))}</span></div>` : ""}
     ${evento.descricao ? `<div class="detail-panel__linha"><span class="detail-panel__linha-rotulo">Descrição</span><span class="detail-panel__linha-valor">${escapeHtml(evento.descricao)}</span></div>` : ""}
     ${evento.link ? `<a class="detail-panel__link" href="${escapeAttr(evento.link)}" target="_blank" rel="noopener">🔗 Entrar na reunião</a>` : ""}
   `;
@@ -1527,92 +1679,124 @@ const CATEGORIA_CORES_EXPORT = {
 // um layout empilhado que exibe todos os dados do compromisso — título,
 // horário, duração, local, descrição e link — já que há espaço vertical de
 // sobra e o objetivo é uma agenda completa para consulta no celular.
-function construirCardExportacao(evento, diaChave, detalhado) {
-  if (detalhado) return construirCardExportacaoDetalhado(evento, diaChave);
-
+// Uma "linha" (cartão compacto) do papel de exportação, respeitando a
+// densidade escolhida:
+//   - resumo:       só título + horário
+//   - compromissos: + categoria, local, participantes (sem descrição/link)
+//   - completo:     + descrição e link
+function linhaPaperExport(evento, diaChave, densidade) {
   const cores = CATEGORIA_CORES_EXPORT[evento.categoria] || CATEGORIA_CORES_EXPORT["pauta-presencial"];
-  const corBorda = evento.cancelado ? "#C94B4B" : cores.borda;
-  const div = document.createElement("div");
-  div.style.cssText = `font-family:'Segoe UI', Arial, sans-serif; width:700px; padding:10px 16px; margin-bottom:8px; background:#fff; border:1px solid #DCE5EF; border-left:4px solid ${corBorda}; border-radius:8px;`;
-
   const continuo = eventoEhContinuo(evento);
   const horario = horarioResumoPorDia(evento, diaChave);
-
-  // Pauta online: o link da reunião é informação essencial para participar,
-  // então continua aparecendo mesmo no resumo minimalista.
+  const resumoPart = participantesResumo(evento);
   const mostrarLink = evento.categoria === "pauta-online" && !!evento.link;
 
+  const estiloTitulo = evento.cancelado
+    ? "font-size:13.5px;font-weight:700;color:#607086;text-decoration:line-through;"
+    : "font-size:13.5px;font-weight:700;color:#10233C;";
+
+  const metas = [];
+  if (densidade !== "resumo") {
+    metas.push(
+      `<span style="font-weight:700;text-transform:uppercase;letter-spacing:.3px;font-size:9px;color:${cores.texto};background:${cores.fundo};padding:2px 7px;border-radius:5px;">${CATEGORIA_LABEL[evento.categoria] || ""}</span>`
+    );
+    if (continuo) {
+      metas.push(
+        `<span style="color:#0E7C86;font-weight:600;">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(dataFimInclusivo(evento))}</span>`
+      );
+    }
+    if (evento.local) metas.push(`<span>📍 ${escapeHtml(evento.local)}</span>`);
+    if (resumoPart) metas.push(`<span>👥 ${escapeHtml(resumoPart)}</span>`);
+  }
+
+  const detalhe =
+    densidade === "completo"
+      ? `${evento.descricao ? `<div style="font-size:11px;color:#607086;line-height:1.45;margin-top:6px;">${escapeHtml(evento.descricao)}</div>` : ""}${
+          mostrarLink ? `<div style="font-size:10.5px;color:#174D83;margin-top:5px;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""
+        }`
+      : "";
+
   const bannerCancelado = evento.cancelado
-    ? `<div style="background:#C94B4B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:5px 12px;margin:-10px -16px 8px;border-radius:6px 6px 0 0;">⚠ Compromisso cancelado</div>`
+    ? `<div style="display:inline-block;background:#C94B4B;color:#fff;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px;border-radius:5px;margin-bottom:5px;">⚠ Cancelado</div>`
     : "";
 
-  const estiloTitulo = evento.cancelado
-    ? "flex:1;min-width:0;font-size:14px;font-weight:600;color:#607086;text-decoration:line-through;"
-    : "flex:1;min-width:0;font-size:14px;font-weight:600;color:#10233C;";
-
-  div.innerHTML = `
-    ${bannerCancelado}
-    <div style="display:flex;align-items:center;gap:14px;">
-      <div style="min-width:118px;flex-shrink:0;font-size:12.5px;font-weight:700;color:#174D83;">${horario}</div>
-      <div style="${estiloTitulo}">${escapeHtml(evento.titulo)}</div>
-      <span style="flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:4px 10px;border-radius:999px;background:${cores.fundo};color:${cores.texto};white-space:nowrap;">${CATEGORIA_LABEL[evento.categoria] || ""}</span>
+  return `
+    <div style="display:flex;border:1px solid #E2E9F2;border-radius:10px;overflow:hidden;margin-bottom:8px;background:#fff;">
+      <div style="width:5px;flex-shrink:0;background:${cores.borda};"></div>
+      <div style="flex:1;min-width:0;padding:10px 13px;">
+        ${bannerCancelado}
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;">
+          <div style="${estiloTitulo}">${escapeHtml(evento.titulo)}</div>
+          <div style="font-size:12px;font-weight:800;color:#174D83;white-space:nowrap;flex-shrink:0;">${horario}</div>
+        </div>
+        ${metas.length ? `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:5px 11px;margin-top:6px;font-size:10.5px;line-height:1.4;color:#4A5B72;">${metas.join("")}</div>` : ""}
+        ${detalhe}
+      </div>
     </div>
-    ${
-      continuo
-        ? `<div style="margin-top:4px;padding-left:132px;font-size:10.5px;color:#607086;">Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(dataFimInclusivo(evento))}</div>`
-        : ""
-    }
-    ${mostrarLink ? `<div style="margin-top:6px;padding-left:132px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
   `;
-
-  return div;
 }
 
-// Cartão de exportação completo (mobile vertical): layout empilhado com todos
-// os dados do compromisso.
-function construirCardExportacaoDetalhado(evento, diaChave) {
-  const cores = CATEGORIA_CORES_EXPORT[evento.categoria] || CATEGORIA_CORES_EXPORT["pauta-presencial"];
-  const corBorda = evento.cancelado ? "#C94B4B" : cores.borda;
-  const div = document.createElement("div");
-  div.style.cssText = `font-family:'Segoe UI', Arial, sans-serif; width:100%; padding:12px 14px; margin-bottom:10px; background:#fff; border:1px solid #DCE5EF; border-left:4px solid ${corBorda}; border-radius:8px; box-sizing:border-box;`;
+// Monta o "papel" completo de exportação (cabeçalho institucional + grupos por
+// dia). Sempre em tema claro/institucional, independentemente do modo escuro
+// da interface. É o elemento capturado por html2canvas para gerar JPEG/PDF e
+// também exibido como pré-visualização no overlay.
+function construirPaperExport(grupos, totalFiltrados) {
+  const { formato, densidade } = state.exportacao;
+  const largura = formato === "a4" ? 820 : 440;
+  const logo = logoDataUrlCache;
+  const marca = logo
+    ? `<img src="${logo}" alt="" style="width:52px;height:52px;border-radius:12px;flex-shrink:0;" />`
+    : `<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#174D83,#55A9E8);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:15px;letter-spacing:.5px;color:#fff;">SD</div>`;
 
-  const continuo = eventoEhContinuo(evento);
-  const horario = horarioResumoPorDia(evento, diaChave);
-  const duracao = duracaoLegivel(evento);
-  const mostrarLink = evento.categoria === "pauta-online" && !!evento.link;
+  const resumo = `${totalFiltrados} compromisso${totalFiltrados === 1 ? "" : "s"}`;
+  const periodoLabel = subtituloDaPagina();
 
-  const bannerCancelado = evento.cancelado
-    ? `<div style="background:#C94B4B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:5px 12px;margin:-12px -14px 10px;border-radius:6px 6px 0 0;">⚠ Compromisso cancelado</div>`
-    : "";
+  let corpo = "";
+  if (totalFiltrados === 0) {
+    corpo = `<div style="padding:26px;text-align:center;color:#8899AD;font-size:13px;">Nenhum compromisso encontrado para os filtros selecionados.</div>`;
+  } else {
+    grupos.forEach((grupo) => {
+      const linhas = grupo.eventos
+        .map(({ evento, diaChave }) => linhaPaperExport(evento, diaChave, densidade))
+        .join("");
+      corpo += `
+        <div style="margin-bottom:16px;break-inside:avoid;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;">
+            <span style="background:#061A35;color:#fff;font-size:11px;font-weight:700;padding:4px 11px;border-radius:7px;text-transform:capitalize;white-space:nowrap;">${escapeHtml(grupo.rotulo)}</span>
+            <span style="height:1px;flex:1;background:#DCE5EF;"></span>
+            <span style="font-size:10px;color:#8899AD;font-weight:600;">${grupo.eventos.length} compromisso${grupo.eventos.length === 1 ? "" : "s"}</span>
+          </div>
+          ${linhas}
+        </div>
+      `;
+    });
+  }
 
-  const estiloTitulo = evento.cancelado
-    ? "flex:1;min-width:0;font-size:15px;font-weight:700;line-height:1.3;color:#607086;text-decoration:line-through;"
-    : "flex:1;min-width:0;font-size:15px;font-weight:700;line-height:1.3;color:#10233C;";
-
-  const metas = [`<span>🕐 ${horario}</span>`, `<span>⏱ ${escapeHtml(duracao)}</span>`];
-  if (evento.local) metas.push(`<span>📍 ${escapeHtml(evento.local)}</span>`);
-
-  div.innerHTML = `
-    ${bannerCancelado}
-    <div style="display:flex;align-items:flex-start;gap:10px;">
-      <div style="${estiloTitulo}">${escapeHtml(evento.titulo)}</div>
-      <span style="flex-shrink:0;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:4px 9px;border-radius:999px;background:${cores.fundo};color:${cores.texto};white-space:nowrap;">${CATEGORIA_LABEL[evento.categoria] || ""}</span>
+  const paper = document.createElement("div");
+  paper.className = "export-paper";
+  paper.style.cssText = `width:${largura}px;max-width:100%;background:#fff;border-radius:14px;overflow:hidden;font-family:'Segoe UI', Arial, sans-serif;color:#10233C;`;
+  paper.innerHTML = `
+    <div style="background:linear-gradient(135deg,#061A35,#0B2D57);color:#fff;padding:20px 24px;display:flex;align-items:center;gap:15px;">
+      ${marca}
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:17px;font-weight:800;letter-spacing:-.2px;">Agenda — Diego Daltro</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.72);margin-top:2px;">SISD/SESAB · Superintendência de Informação e Saúde Digital</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:9.5px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.5px;">Período</div>
+        <div style="font-size:12px;font-weight:700;margin-top:2px;max-width:200px;">${escapeHtml(periodoLabel)}</div>
+      </div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:7px;font-size:11.5px;color:#607086;">${metas.join("")}</div>
-    ${
-      continuo
-        ? `<div style="margin-top:5px;font-size:11px;color:#0E7C86;font-weight:600;">📅 Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(dataFimInclusivo(evento))}</div>`
-        : ""
-    }
-    ${
-      evento.descricao
-        ? `<div style="margin-top:8px;font-size:12px;line-height:1.5;color:#10233C;white-space:pre-line;">${escapeHtml(evento.descricao)}</div>`
-        : ""
-    }
-    ${mostrarLink ? `<div style="margin-top:8px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
+    <div style="background:#E9F1FA;padding:8px 24px;display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:#174D83;font-weight:600;flex-wrap:wrap;">
+      <span>${resumo}</span>
+      <span>Gerado em ${formatarDataHora(new Date())} · Fuso America/Bahia</span>
+    </div>
+    <div style="padding:18px 24px 6px;">${corpo}</div>
+    <div style="padding:11px 24px 18px;border-top:1px solid #EEF2F8;font-size:9.5px;color:#8899AD;text-align:center;">
+      Agenda institucional sincronizada do Outlook / Microsoft 365 · SISD/SESAB
+    </div>
   `;
-
-  return div;
+  return paper;
 }
 
 // Carrega o logotipo institucional (SISD) como data URL uma única vez, para
@@ -1661,209 +1845,86 @@ async function renderizarCanvasElemento(el, escala) {
   return canvas;
 }
 
-async function exportarPDF() {
-  const { formato } = state.exportacao;
-  const eventos = obterEventosFiltrados();
-  const grupos = agruparPorDia(eventos);
-  const logoDataUrl = await obterLogoDataUrl();
+/* ==========================================================================
+   OVERLAY DE EXPORTAÇÃO (formato, densidade, pré-visualização e download)
+   ========================================================================== */
 
-  const { jsPDF } = window.jspdf;
-  const pdf =
-    formato === "a4"
-      ? new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" })
-      : new jsPDF({ orientation: "portrait", unit: "mm", format: [100, 200] });
-
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const margin = 10;
-  const usableWidth = pageWidth - margin * 2;
-  const alturaFaixa = formato === "a4" ? 24 : 20;
-
-  let cursorY = margin;
-
-  // Cabeçalho institucional: faixa azul-marinho com o logotipo SISD,
-  // título e data de geração, encerrada por uma linha de destaque azul-claro.
-  function desenharCabecalho() {
-    pdf.setFillColor(6, 26, 53);
-    pdf.rect(0, 0, pageWidth, alturaFaixa, "F");
-
-    const logoTamanho = alturaFaixa - 10;
-    const logoY = (alturaFaixa - logoTamanho) / 2;
-    let textoX = margin;
-    if (logoDataUrl) {
-      pdf.addImage(logoDataUrl, "PNG", margin, logoY, logoTamanho, logoTamanho);
-      textoX = margin + logoTamanho + 5;
-    }
-
-    pdf.setFontSize(formato === "a4" ? 14 : 12);
-    pdf.setTextColor(255, 255, 255);
-    pdf.text("Agenda Diego Daltro", textoX, alturaFaixa / 2 - 1);
-    pdf.setFontSize(8.5);
-    pdf.setTextColor(175, 198, 224);
-    pdf.text("SISD/SESAB — Gerado em " + formatarDataHora(new Date()), textoX, alturaFaixa / 2 + 5);
-
-    pdf.setDrawColor(85, 169, 232);
-    pdf.setLineWidth(0.8);
-    pdf.line(0, alturaFaixa, pageWidth, alturaFaixa);
-    pdf.setLineWidth(0.2);
-    pdf.setDrawColor(0);
-
-    cursorY = alturaFaixa + 8;
-  }
-
-  desenharCabecalho();
-
-  if (eventos.length === 0) {
-    pdf.setFontSize(11);
-    pdf.setTextColor(90);
-    pdf.text("Nenhum compromisso encontrado para os filtros selecionados.", margin, cursorY + 4);
-  }
-
-  for (const grupo of grupos) {
-    if (cursorY + 10 > pageHeight - margin) {
-      pdf.addPage();
-      cursorY = margin;
-      desenharCabecalho();
-    }
-    pdf.setFontSize(11);
-    pdf.setTextColor(6, 26, 53);
-    pdf.text(grupo.rotulo, margin, cursorY + 4);
-    cursorY += 8;
-
-    for (const { evento, diaChave } of grupo.eventos) {
-      const cardEl = construirCardExportacao(evento, diaChave);
-      const canvas = await renderizarCanvasElemento(cardEl, 3);
-      const imgWidthMm = usableWidth;
-      const imgHeightMm = (canvas.height * imgWidthMm) / canvas.width;
-
-      if (cursorY + imgHeightMm > pageHeight - margin) {
-        pdf.addPage();
-        cursorY = margin;
-        desenharCabecalho();
-      }
-
-      pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, cursorY, imgWidthMm, imgHeightMm);
-      cursorY += imgHeightMm + 4;
-    }
-    cursorY += 2;
-  }
-
-  pdf.save(`agenda-${Date.now()}.pdf`);
+// Renderiza a pré-visualização do papel de exportação dentro do overlay.
+function renderizarPreviewExport(filtrados) {
+  const alvo = document.getElementById("export-preview");
+  if (!alvo) return;
+  const lista = filtrados || obterEventosFiltrados();
+  const grupos = agruparPorDia(lista);
+  alvo.innerHTML = "";
+  alvo.appendChild(construirPaperExport(grupos, lista.length));
 }
 
-// Altura máxima (em px, antes da escala 3x) de conteúdo por imagem JPEG.
-// Um único canvas gigante (ex.: 70+ cartões empilhados) pode ultrapassar o
-// limite de área/dimensão de canvas do navegador e gerar um arquivo
-// corrompido — por isso o conteúdo é paginado em várias imagens quando
-// necessário, do mesmo jeito que a exportação em PDF já faz por cartão.
-const JPEG_ALTURA_MAXIMA_POR_PAGINA_PX = 4000;
+let elementoComFocoAntesDoExport = null;
 
-function criarCabecalhoExportacao(logoDataUrl) {
-  const header = document.createElement("div");
-  header.style.cssText =
-    "padding: 16px 18px; margin-bottom: 16px; background: #061A35; display: flex; align-items: center; gap: 12px; border-radius: 12px; border-bottom: 3px solid #55A9E8;";
-
-  const logoHtml = logoDataUrl
-    ? `<img src="${logoDataUrl}" alt="" style="width:44px;height:44px;border-radius:50%;flex-shrink:0;" />`
-    : "";
-
-  header.innerHTML = `
-    ${logoHtml}
-    <div>
-      <div style="font-size:17px;font-weight:700;color:#ffffff;line-height:1.2;">Agenda Diego Daltro</div>
-      <div style="font-size:10.5px;color:#AFC6E0;margin-top:2px;">SISD/SESAB — Gerado em ${formatarDataHora(new Date())}</div>
-    </div>
-  `;
-  return header;
+function abrirOverlayExport() {
+  elementoComFocoAntesDoExport = document.activeElement;
+  const overlay = document.getElementById("export-backdrop");
+  renderizarPreviewExport();
+  overlay.hidden = false;
+  document.body.style.overflow = "hidden";
+  document.getElementById("btn-fechar-export").focus();
 }
 
-async function exportarJPEG() {
-  const { formato } = state.exportacao;
-  const eventos = obterEventosFiltrados();
-  const grupos = agruparPorDia(eventos);
-  const largura = formato === "a4" ? 794 : 420;
-  // Formato mobile vertical: usa o cartão completo (título, horário, duração,
-  // local, descrição e link), aproveitando o espaço vertical do celular.
-  const detalhado = formato === "mobile";
-  const logoDataUrl = await obterLogoDataUrl();
-
-  // Monta a lista plana de unidades (cabeçalho de data + cartões/linhas) na
-  // ordem em que devem aparecer, para depois decidir os cortes de página.
-  const unidades = [];
-
-  if (eventos.length === 0) {
-    const vazio = document.createElement("div");
-    vazio.style.cssText = "color:#607086;font-size:13px;padding:20px 0;";
-    vazio.textContent = "Nenhum compromisso encontrado para os filtros selecionados.";
-    unidades.push(vazio);
+function fecharOverlayExport() {
+  const overlay = document.getElementById("export-backdrop");
+  if (overlay.hidden) return;
+  overlay.hidden = true;
+  document.body.style.overflow = "";
+  if (elementoComFocoAntesDoExport && document.contains(elementoComFocoAntesDoExport)) {
+    elementoComFocoAntesDoExport.focus();
   }
+}
 
-  grupos.forEach((grupo) => {
-    const dataEl = document.createElement("div");
-    dataEl.style.cssText = "font-size:13px;font-weight:700;color:#061A35;margin:14px 0 8px;";
-    dataEl.textContent = grupo.rotulo;
-    unidades.push(dataEl);
+// Captura o papel visível na pré-visualização e gera JPEG ou PDF — a saída
+// reflete exatamente o que está na tela (WYSIWYG). No formato A4 o conteúdo é
+// fatiado por página; no mobile vira uma única página longa.
+async function exportarPapel(tipo) {
+  const { formato } = state.exportacao;
+  const paper = document.querySelector("#export-preview .export-paper");
+  if (!paper || !window.html2canvas) return;
 
-    grupo.eventos.forEach(({ evento, diaChave }) => {
-      const card = construirCardExportacao(evento, diaChave, detalhado);
-      card.style.width = "100%";
-      unidades.push(card);
-    });
-  });
-
-  // Mede a altura real de cada unidade e do cabeçalho fora da tela, antes de
-  // decidir os cortes de página.
-  const medidor = document.createElement("div");
-  medidor.style.cssText = `width:${largura}px; padding:0 20px; background:#fff; font-family:'Segoe UI', Arial, sans-serif;`;
-  const headerMedicao = criarCabecalhoExportacao(logoDataUrl);
-  medidor.appendChild(headerMedicao);
-  unidades.forEach((el) => medidor.appendChild(el));
-  document.getElementById("export-sandbox").appendChild(medidor);
-  // setTimeout em vez de requestAnimationFrame: rAF não dispara em abas
-  // em segundo plano/sem foco, o que travaria a exportação indefinidamente.
-  await new Promise((r) => setTimeout(r, 0));
-
-  const alturaCabecalho = headerMedicao.getBoundingClientRect().height;
-  const alturas = unidades.map((el) => el.getBoundingClientRect().height);
-  medidor.remove();
-
-  // Agrupa as unidades em páginas respeitando o limite de altura, sem
-  // nunca cortar uma unidade (cartão/linha) no meio.
-  const paginas = [];
-  let paginaAtual = [];
-  let alturaAtual = alturaCabecalho;
-
-  unidades.forEach((el, i) => {
-    const altura = alturas[i] || 0;
-    if (alturaAtual + altura > JPEG_ALTURA_MAXIMA_POR_PAGINA_PX && paginaAtual.length > 0) {
-      paginas.push(paginaAtual);
-      paginaAtual = [];
-      alturaAtual = alturaCabecalho;
-    }
-    paginaAtual.push(el);
-    alturaAtual += altura;
-  });
-  if (paginaAtual.length > 0) paginas.push(paginaAtual);
-
+  await aguardarImagensCarregadas(paper);
+  const canvas = await html2canvas(paper, { scale: 2, backgroundColor: "#ffffff", useCORS: true });
   const timestamp = Date.now();
 
-  for (let i = 0; i < paginas.length; i++) {
-    const container = document.createElement("div");
-    container.style.cssText = `width:${largura}px; padding:20px; background:#fff; font-family:'Segoe UI', Arial, sans-serif;`;
-    container.appendChild(criarCabecalhoExportacao(logoDataUrl));
-    paginas[i].forEach((el) => container.appendChild(el));
-
-    const canvas = await renderizarCanvasElemento(container, 3);
-    const sufixo = paginas.length > 1 ? `-parte${i + 1}-de-${paginas.length}` : "";
+  if (tipo === "jpeg") {
     const link = document.createElement("a");
-    link.download = `agenda-${timestamp}${sufixo}.jpg`;
+    link.download = `agenda-diego-daltro-${timestamp}.jpg`;
     link.href = canvas.toDataURL("image/jpeg", 0.95);
     link.click();
+    return;
+  }
 
-    // Pequena pausa entre downloads sucessivos para o navegador processá-los.
-    if (i < paginas.length - 1) {
-      await new Promise((r) => setTimeout(r, 200));
+  const { jsPDF } = window.jspdf;
+  const img = canvas.toDataURL("image/jpeg", 0.95);
+  const isA4 = formato === "a4";
+  const larguraMm = isA4 ? 210 : 120;
+  const alturaMm = (canvas.height * larguraMm) / canvas.width;
+
+  if (isA4) {
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const utilizavel = 297 - 12;
+    let restante = alturaMm;
+    let deslocamento = 0;
+    let primeira = true;
+    while (restante > 0) {
+      if (!primeira) pdf.addPage();
+      pdf.addImage(img, "JPEG", 0, 6 - deslocamento, larguraMm, alturaMm);
+      restante -= utilizavel;
+      deslocamento += utilizavel;
+      primeira = false;
     }
+    pdf.save(`agenda-diego-daltro-${timestamp}.pdf`);
+  } else {
+    const alturaPagina = Math.min(alturaMm + 12, 5000);
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: [larguraMm, alturaPagina] });
+    pdf.addImage(img, "JPEG", 0, 6, larguraMm, alturaMm);
+    pdf.save(`agenda-diego-daltro-${timestamp}.pdf`);
   }
 }
 
@@ -2002,79 +2063,63 @@ function inicializarInterface() {
     false
   );
 
-  configurarChipGroup(
-    "#categoria-group",
-    (btn) => {
-      const categoria = btn.dataset.categoria;
-      if (state.filtros.categorias.has(categoria)) {
-        state.filtros.categorias.delete(categoria);
-      } else {
-        state.filtros.categorias.add(categoria);
-      }
-      renderizarConteudo();
-    },
-    true
-  );
+  // Lista de categorias (sidebar): alterna a categoria clicada.
+  document.getElementById("categoria-lista").addEventListener("click", (ev) => {
+    const item = ev.target.closest(".cat-list__item");
+    if (!item) return;
+    const categoria = item.dataset.categoria;
+    if (state.filtros.categorias.has(categoria)) state.filtros.categorias.delete(categoria);
+    else state.filtros.categorias.add(categoria);
+    renderizarConteudo();
+    if (window.innerWidth <= 860) fecharSidebarMobile();
+  });
 
-  configurarChipGroup(
-    "#export-formato-group",
-    (btn) => {
-      state.exportacao.formato = btn.dataset.formato;
-    },
-    false
-  );
+  // ---------------------------------------------------------------------
+  // Overlay de exportação
+  // ---------------------------------------------------------------------
 
-  const LIMITE_CONFIRMACAO_EXPORTACAO = 40;
+  document.getElementById("btn-abrir-export").addEventListener("click", abrirOverlayExport);
+  document.getElementById("btn-fechar-export").addEventListener("click", fecharOverlayExport);
+  document.getElementById("export-backdrop").addEventListener("click", (ev) => {
+    // Fecha apenas ao clicar no fundo escurecido, fora do painel/preview.
+    if (ev.target.id === "export-backdrop") fecharOverlayExport();
+  });
 
-  document.getElementById("btn-exportar-pdf").addEventListener("click", async (ev) => {
-    const quantidade = obterEventosFiltrados().length;
-    if (quantidade > LIMITE_CONFIRMACAO_EXPORTACAO) {
-      const prosseguir = await confirmarAcao(
-        `A exportação em PDF vai incluir ${quantidade} compromissos e pode levar alguns segundos, gerando várias páginas. Deseja continuar?`,
-        "Confirmar exportação em PDF"
-      );
-      if (!prosseguir) return;
-    }
+  // Seleção de formato e densidade — atualiza a pré-visualização ao vivo.
+  function ligarOpcoesExport(seletor, aoEscolher) {
+    const grupo = document.querySelector(seletor);
+    grupo.addEventListener("click", (ev) => {
+      const btn = ev.target.closest(".opt-card");
+      if (!btn) return;
+      grupo.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      aoEscolher(btn);
+      renderizarPreviewExport();
+    });
+  }
+  ligarOpcoesExport("#export-formato-group", (btn) => {
+    state.exportacao.formato = btn.dataset.formato;
+  });
+  ligarOpcoesExport("#export-densidade-group", (btn) => {
+    state.exportacao.densidade = btn.dataset.densidade;
+  });
 
-    const btn = ev.currentTarget;
+  async function baixarExport(tipo, btn) {
     btn.disabled = true;
     const textoOriginal = btn.textContent;
-    btn.textContent = "Gerando PDF…";
+    btn.textContent = tipo === "pdf" ? "Gerando PDF…" : "Gerando JPEG…";
     try {
-      await exportarPDF();
+      await exportarPapel(tipo);
     } catch (erro) {
-      console.error("Erro ao exportar PDF:", erro);
-      alert("Não foi possível gerar o PDF: " + erro.message);
+      console.error("Erro ao exportar:", erro);
+      alert("Não foi possível gerar o arquivo: " + erro.message);
     } finally {
       btn.disabled = false;
       btn.textContent = textoOriginal;
     }
-  });
-
-  document.getElementById("btn-exportar-jpeg").addEventListener("click", async (ev) => {
-    const quantidade = obterEventosFiltrados().length;
-    if (quantidade > LIMITE_CONFIRMACAO_EXPORTACAO) {
-      const prosseguir = await confirmarAcao(
-        `A exportação em JPEG vai incluir ${quantidade} compromissos e pode gerar múltiplas imagens. Deseja continuar?`,
-        "Confirmar exportação em JPEG"
-      );
-      if (!prosseguir) return;
-    }
-
-    const btn = ev.currentTarget;
-    btn.disabled = true;
-    const textoOriginal = btn.textContent;
-    btn.textContent = "Gerando JPEG…";
-    try {
-      await exportarJPEG();
-    } catch (erro) {
-      console.error("Erro ao exportar JPEG:", erro);
-      alert("Não foi possível gerar o JPEG: " + erro.message);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = textoOriginal;
-    }
-  });
+  }
+  document.getElementById("btn-exportar-pdf").addEventListener("click", (ev) => baixarExport("pdf", ev.currentTarget));
+  document.getElementById("btn-exportar-jpeg").addEventListener("click", (ev) => baixarExport("jpeg", ev.currentTarget));
 
   // ---------------------------------------------------------------------
   // Sidebar: drawer mobile e colapso no desktop
@@ -2205,6 +2250,10 @@ function inicializarInterface() {
       fecharModalTexto();
       return;
     }
+    if (!document.getElementById("export-backdrop").hidden) {
+      fecharOverlayExport();
+      return;
+    }
     if (document.getElementById("detail-panel").getAttribute("aria-hidden") === "false") {
       fecharPainelDetalhes();
       return;
@@ -2221,6 +2270,10 @@ function inicializarInterface() {
 
 function iniciar() {
   inicializarInterface();
+
+  // Pré-carrega o logotipo institucional para que o cabeçalho da exportação
+  // já mostre a marca real (e não o distintivo "SD" de fallback).
+  obterLogoDataUrl();
 
   // Pré-carrega o cache local para uma primeira renderização instantânea,
   // antes mesmo da resposta da rede chegar.
