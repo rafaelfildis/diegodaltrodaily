@@ -828,13 +828,13 @@ button, input {
   .sidebar__collapse-btn { display: flex; }
 
   .app-shell.is-sidebar-recolhida .sidebar {
-    width: 0;
-    min-width: 0;
-    border-right: none;
+    width: 48px;
+    min-width: 48px;
     overflow: hidden;
   }
   .app-shell.is-sidebar-recolhida .sidebar__nav,
   .app-shell.is-sidebar-recolhida .sidebar__filters { display: none; }
+  .app-shell.is-sidebar-recolhida .sidebar__collapse-btn { justify-content: center; padding: 12px 0; }
   .app-shell.is-sidebar-recolhida .sidebar__collapse-btn svg { transform: rotate(180deg); }
   .app-shell.is-sidebar-recolhida .sidebar__collapse-btn span { display: none; }
 }
