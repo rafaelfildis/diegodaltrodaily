@@ -106,6 +106,7 @@ Conflitos de horário são calculados por `marcarConflitos(eventos)` (varredura 
 - **Modo escuro**: alternância claro/escuro na topbar (botão sol/lua), respeitando `prefers-color-scheme` por padrão, com a escolha persistida em `localStorage` e aplicada antes da primeira pintura (sem "flash"). Paleta escura definida por overrides das custom properties em `@media (prefers-color-scheme: dark)` e `:root[data-theme="dark"]`.
 - **Polimento visual**: ícones nos 3 cartões de indicadores, skeleton loading na primeira carga, estado vazio ilustrado, animação de entrada dos cards, scrollbar personalizada e gradiente na topbar — tudo respeitando `prefers-reduced-motion`.
 - **Compromissos de vários dias**: eventos que atravessam mais de um dia (viagens, módulos de mestrado etc.) passam a aparecer na agenda de **cada dia** que ocupam (`diasQueEventoAbrange`), com horário contextual por dia e badge de intervalo. Refletido também nas exportações (PDF/JPEG/texto). O recorte respeita a janela de filtro (período e datas De/Até) via `janelaDeExibicaoAtual`, sem vazar para dias fora do filtro.
+- **DTEND exclusivo em eventos de dia inteiro**: o `DTEND` de eventos de dia inteiro é exclusivo no iCalendar (RFC 5545) — um evento que ocupa 22 a 25 traz `DTEND` = dia 26. `dataFimInclusivo` recua para o último dia realmente ocupado, corrigindo a exibição (deixava aparecer um dia a mais), a contagem de dias abrangidos, os filtros e as exportações.
 - **Exportação JPEG mobile completa**: no formato mobile vertical, o cartão de exportação (`construirCardExportacaoDetalhado`) passa a exibir todos os dados do compromisso — título, horário, duração, local, descrição e link — em layout empilhado. Os formatos A4 (JPEG/PDF) seguem com o cartão minimalista.
 
 ---
@@ -1763,6 +1764,28 @@ function fimDoMes(date) {
   return proximo;
 }
 
+// Último instante REALMENTE ocupado por um compromisso.
+//
+// Em eventos de dia inteiro, o DTEND do ICS é EXCLUSIVO (RFC 5545): um evento
+// que ocupa 22, 23, 24 e 25 é publicado com DTEND = dia 26 ("até, sem
+// incluir, o dia 26"). Usar esse `fim` cru faz o app contar um dia a mais
+// (aparece no dia 26, badge "22–26"). Aqui recuamos para o fim do dia
+// anterior ao DTEND, obtendo o último dia de fato ocupado (25).
+//
+// Para eventos com horário, o DTEND já é o instante real de término e é
+// devolvido sem ajuste.
+function dataFimInclusivo(evento) {
+  const fim = new Date(evento.fim);
+  if (!evento.diaInteiro) return fim;
+
+  const inicio = new Date(evento.inicio);
+  // Último milissegundo do dia anterior ao DTEND, no fuso de exibição.
+  const candidato = new Date(inicioDoDia(fim).getTime() - 1);
+  // Nunca antes do dia de início — protege eventos de dia inteiro sem DTEND
+  // ou com DTEND == DTSTART (um único dia).
+  return candidato.getTime() < inicio.getTime() ? inicio : candidato;
+}
+
 /* ==========================================================================
    CLASSIFICAÇÃO AUTOMÁTICA
    ========================================================================== */
@@ -2148,7 +2171,7 @@ function eventoNoPeriodo(evento, periodo) {
   if (!janela) return true;
 
   const inicioEvento = new Date(evento.inicio).getTime();
-  const fimEvento = new Date(evento.fim).getTime();
+  const fimEvento = dataFimInclusivo(evento).getTime();
 
   // Interseção de intervalos — cobre eventos que atravessam mais de um dia.
   return inicioEvento <= janela.fim.getTime() && fimEvento >= janela.inicio.getTime();
@@ -2158,7 +2181,7 @@ function eventoNoIntervaloDeData(evento, dataInicio, dataFim) {
   if (!dataInicio && !dataFim) return true;
 
   const inicioEvento = new Date(evento.inicio).getTime();
-  const fimEvento = new Date(evento.fim).getTime();
+  const fimEvento = dataFimInclusivo(evento).getTime();
 
   const inicioFiltro = dataInicio
     ? new Date(`${dataInicio}T00:00:00${offsetBahia()}`).getTime()
@@ -2211,12 +2234,12 @@ const LIMITE_DIAS_ABRANGIDOS = 90; // proteção contra datas malformadas no ICS
 
 function diasQueEventoAbrange(evento) {
   const inicioChave = chaveDia(new Date(evento.inicio));
-  const fimChave = chaveDia(new Date(evento.fim));
+  const fimChave = chaveDia(dataFimInclusivo(evento));
   if (inicioChave === fimChave) return [inicioChave];
 
   const dias = [];
   let cursor = inicioDoDia(new Date(evento.inicio));
-  const fimCursor = inicioDoDia(new Date(evento.fim)).getTime();
+  const fimCursor = inicioDoDia(dataFimInclusivo(evento)).getTime();
   let contador = 0;
   while (cursor.getTime() <= fimCursor && contador < LIMITE_DIAS_ABRANGIDOS) {
     dias.push(chaveDia(cursor));
@@ -2229,7 +2252,7 @@ function diasQueEventoAbrange(evento) {
 }
 
 function eventoEhContinuo(evento) {
-  return chaveDia(new Date(evento.inicio)) !== chaveDia(new Date(evento.fim));
+  return chaveDia(new Date(evento.inicio)) !== chaveDia(dataFimInclusivo(evento));
 }
 
 // Janela de dias atualmente visível na tela (interseção do período
@@ -2353,7 +2376,7 @@ function criarCardElemento(evento, diaChave) {
   badges.push(`<span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span>`);
   if (continuo) {
     badges.push(
-      `<span class="badge badge--continuo">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(new Date(evento.fim))}</span>`
+      `<span class="badge badge--continuo">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(dataFimInclusivo(evento))}</span>`
     );
   }
   if (evento.recorrente) badges.push(`<span class="badge badge--recorrente">Recorrente</span>`);
@@ -2758,16 +2781,22 @@ function abrirPainelDetalhes(eventoId) {
   const horario = evento.diaInteiro
     ? "Dia inteiro"
     : `${formatarHora(new Date(evento.inicio))} – ${formatarHora(new Date(evento.fim))}`;
-  const dataHorarioTexto = continuo
-    ? `${formatarDataLonga(new Date(evento.inicio))} (${formatarHora(new Date(evento.inicio))}) até ${formatarDataLonga(new Date(evento.fim))} (${formatarHora(new Date(evento.fim))})`
-    : `${formatarDataLonga(new Date(evento.inicio))} — ${horario}`;
+  let dataHorarioTexto;
+  if (!continuo) {
+    dataHorarioTexto = `${formatarDataLonga(new Date(evento.inicio))} — ${horario}`;
+  } else if (evento.diaInteiro) {
+    // Dia inteiro contínuo: só datas, sem "(00:00)" que não agrega nada.
+    dataHorarioTexto = `${formatarDataLonga(new Date(evento.inicio))} até ${formatarDataLonga(dataFimInclusivo(evento))}`;
+  } else {
+    dataHorarioTexto = `${formatarDataLonga(new Date(evento.inicio))} (${formatarHora(new Date(evento.inicio))}) até ${formatarDataLonga(new Date(evento.fim))} (${formatarHora(new Date(evento.fim))})`;
+  }
 
   const badges = [];
   if (situacao === "andamento") badges.push(`<span class="badge badge--agora">● Agora</span>`);
   badges.push(`<span class="badge badge--${evento.categoria}">${CATEGORIA_LABEL[evento.categoria]}</span>`);
   if (continuo) {
     badges.push(
-      `<span class="badge badge--continuo">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(new Date(evento.fim))}</span>`
+      `<span class="badge badge--continuo">📅 ${formatarDataCurta(new Date(evento.inicio))}–${formatarDataCurta(dataFimInclusivo(evento))}</span>`
     );
   }
   if (evento.recorrente) badges.push(`<span class="badge badge--recorrente">Recorrente</span>`);
@@ -3087,7 +3116,7 @@ function construirCardExportacao(evento, diaChave, detalhado) {
     </div>
     ${
       continuo
-        ? `<div style="margin-top:4px;padding-left:132px;font-size:10.5px;color:#607086;">Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(new Date(evento.fim))}</div>`
+        ? `<div style="margin-top:4px;padding-left:132px;font-size:10.5px;color:#607086;">Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(dataFimInclusivo(evento))}</div>`
         : ""
     }
     ${mostrarLink ? `<div style="margin-top:6px;padding-left:132px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
@@ -3129,7 +3158,7 @@ function construirCardExportacaoDetalhado(evento, diaChave) {
     <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:7px;font-size:11.5px;color:#607086;">${metas.join("")}</div>
     ${
       continuo
-        ? `<div style="margin-top:5px;font-size:11px;color:#0E7C86;font-weight:600;">📅 Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(new Date(evento.fim))}</div>`
+        ? `<div style="margin-top:5px;font-size:11px;color:#0E7C86;font-weight:600;">📅 Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(dataFimInclusivo(evento))}</div>`
         : ""
     }
     ${
@@ -3422,7 +3451,7 @@ function construirTextoAgenda() {
       const horario = horarioResumoPorDia(evento, diaChave);
       const aviso = evento.cancelado ? "  [⚠ CANCELADO]" : "";
       const continuo = eventoEhContinuo(evento)
-        ? `  [vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(new Date(evento.fim))}]`
+        ? `  [vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(dataFimInclusivo(evento))}]`
         : "";
       linhas.push(`  ${horario} | ${CATEGORIA_LABEL[evento.categoria]} | ${evento.titulo}${aviso}${continuo}`);
       if (evento.categoria === "pauta-online" && evento.link) {
