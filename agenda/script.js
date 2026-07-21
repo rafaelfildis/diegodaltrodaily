@@ -1494,7 +1494,14 @@ const CATEGORIA_CORES_EXPORT = {
 // Cartão de exportação minimalista: mostra somente horário, título e
 // categoria (que já indica presencial/online/viagem). Sem descrição, link,
 // local ou duração — o dia/data já aparecem no cabeçalho de cada grupo.
-function construirCardExportacao(evento, diaChave) {
+//
+// Quando `detalhado` é true (exportação JPEG no formato mobile vertical), usa
+// um layout empilhado que exibe todos os dados do compromisso — título,
+// horário, duração, local, descrição e link — já que há espaço vertical de
+// sobra e o objetivo é uma agenda completa para consulta no celular.
+function construirCardExportacao(evento, diaChave, detalhado) {
+  if (detalhado) return construirCardExportacaoDetalhado(evento, diaChave);
+
   const cores = CATEGORIA_CORES_EXPORT[evento.categoria] || CATEGORIA_CORES_EXPORT["pauta-presencial"];
   const corBorda = evento.cancelado ? "#C94B4B" : cores.borda;
   const div = document.createElement("div");
@@ -1528,6 +1535,53 @@ function construirCardExportacao(evento, diaChave) {
         : ""
     }
     ${mostrarLink ? `<div style="margin-top:6px;padding-left:132px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
+  `;
+
+  return div;
+}
+
+// Cartão de exportação completo (mobile vertical): layout empilhado com todos
+// os dados do compromisso.
+function construirCardExportacaoDetalhado(evento, diaChave) {
+  const cores = CATEGORIA_CORES_EXPORT[evento.categoria] || CATEGORIA_CORES_EXPORT["pauta-presencial"];
+  const corBorda = evento.cancelado ? "#C94B4B" : cores.borda;
+  const div = document.createElement("div");
+  div.style.cssText = `font-family:'Segoe UI', Arial, sans-serif; width:100%; padding:12px 14px; margin-bottom:10px; background:#fff; border:1px solid #DCE5EF; border-left:4px solid ${corBorda}; border-radius:8px; box-sizing:border-box;`;
+
+  const continuo = eventoEhContinuo(evento);
+  const horario = horarioResumoPorDia(evento, diaChave);
+  const duracao = duracaoLegivel(evento);
+  const mostrarLink = evento.categoria === "pauta-online" && !!evento.link;
+
+  const bannerCancelado = evento.cancelado
+    ? `<div style="background:#C94B4B;color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:5px 12px;margin:-12px -14px 10px;border-radius:6px 6px 0 0;">⚠ Compromisso cancelado</div>`
+    : "";
+
+  const estiloTitulo = evento.cancelado
+    ? "flex:1;min-width:0;font-size:15px;font-weight:700;line-height:1.3;color:#607086;text-decoration:line-through;"
+    : "flex:1;min-width:0;font-size:15px;font-weight:700;line-height:1.3;color:#10233C;";
+
+  const metas = [`<span>🕐 ${horario}</span>`, `<span>⏱ ${escapeHtml(duracao)}</span>`];
+  if (evento.local) metas.push(`<span>📍 ${escapeHtml(evento.local)}</span>`);
+
+  div.innerHTML = `
+    ${bannerCancelado}
+    <div style="display:flex;align-items:flex-start;gap:10px;">
+      <div style="${estiloTitulo}">${escapeHtml(evento.titulo)}</div>
+      <span style="flex-shrink:0;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.3px;padding:4px 9px;border-radius:999px;background:${cores.fundo};color:${cores.texto};white-space:nowrap;">${CATEGORIA_LABEL[evento.categoria] || ""}</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:7px;font-size:11.5px;color:#607086;">${metas.join("")}</div>
+    ${
+      continuo
+        ? `<div style="margin-top:5px;font-size:11px;color:#0E7C86;font-weight:600;">📅 Compromisso de vários dias: ${formatarDataCurta(new Date(evento.inicio))} a ${formatarDataCurta(new Date(evento.fim))}</div>`
+        : ""
+    }
+    ${
+      evento.descricao
+        ? `<div style="margin-top:8px;font-size:12px;line-height:1.5;color:#10233C;white-space:pre-line;">${escapeHtml(evento.descricao)}</div>`
+        : ""
+    }
+    ${mostrarLink ? `<div style="margin-top:8px;font-size:11.5px;color:#1F6FB0;word-break:break-all;">🔗 ${escapeHtml(evento.link)}</div>` : ""}
   `;
 
   return div;
@@ -1700,6 +1754,9 @@ async function exportarJPEG() {
   const eventos = obterEventosFiltrados();
   const grupos = agruparPorDia(eventos);
   const largura = formato === "a4" ? 794 : 420;
+  // Formato mobile vertical: usa o cartão completo (título, horário, duração,
+  // local, descrição e link), aproveitando o espaço vertical do celular.
+  const detalhado = formato === "mobile";
   const logoDataUrl = await obterLogoDataUrl();
 
   // Monta a lista plana de unidades (cabeçalho de data + cartões/linhas) na
@@ -1720,7 +1777,7 @@ async function exportarJPEG() {
     unidades.push(dataEl);
 
     grupo.eventos.forEach(({ evento, diaChave }) => {
-      const card = construirCardExportacao(evento, diaChave);
+      const card = construirCardExportacao(evento, diaChave, detalhado);
       card.style.width = "100%";
       unidades.push(card);
     });
